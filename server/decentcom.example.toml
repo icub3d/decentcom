@@ -1,0 +1,47 @@
+# decentcom server configuration example.
+# Copy to decentcom.toml and edit for your instance.
+
+[server]
+name = "My Community"
+description = "A decentcom community server"
+# icon_path = "/var/lib/decentcom/icon.png"
+
+[network]
+bind_address = "127.0.0.1:8080"
+
+# --- Storage -----------------------------------------------------------------
+# SQLite (default) — good for home servers and small communities.
+[storage]
+backend = "sqlite"
+database_path = "decentcom.db"
+media_path = "media"
+
+# PostgreSQL — for larger deployments. Comment out the SQLite section above
+# and uncomment this block.
+# [storage]
+# backend = "postgres"
+# database_url = "postgresql://user:pass@localhost/decentcom"
+# media_path = "media"
+
+# --- Features ----------------------------------------------------------------
+[features]
+voice_channels = true
+video = true
+screen_share = true
+file_uploads = true
+emoji_reactions = true
+message_threads = true
+message_search = true
+
+# --- Membership --------------------------------------------------------------
+# Modes: "open", "invite_only", "allowlist", "closed"
+[membership]
+mode = "open"
+
+# --- Content policy ----------------------------------------------------------
+[content]
+max_message_length = 4000
+max_file_size = 26214400  # 25 MiB
+# Empty list allows all MIME types. Otherwise an allowlist:
+# allowed_file_types = ["image/png", "image/jpeg", "application/pdf"]
+allowed_file_types = []
