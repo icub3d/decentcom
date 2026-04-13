@@ -13,6 +13,7 @@ pub struct ServerConfig {
     pub features: FeatureFlags,
     pub membership: MembershipConfig,
     pub content: ContentPolicy,
+    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -80,6 +81,12 @@ pub struct ContentPolicy {
     pub allowed_file_types: Vec<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AuthConfig {
+    pub session_ttl_seconds: u64,
+}
+
 impl Default for ServerIdentity {
     fn default() -> Self {
         Self {
@@ -137,6 +144,14 @@ impl Default for ContentPolicy {
             max_message_length: 4000,
             max_file_size: 25 * 1024 * 1024,
             allowed_file_types: Vec::new(),
+        }
+    }
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            session_ttl_seconds: 24 * 60 * 60,
         }
     }
 }
@@ -223,7 +238,7 @@ impl ServerConfig {
             .map(|_| "<redacted>")
             .unwrap_or("<unset>");
         format!(
-            "name={:?} bind={} backend={:?} db_path={:?} db_url={} media={:?} membership={:?}",
+            "name={:?} bind={} backend={:?} db_path={:?} db_url={} media={:?} membership={:?} auth_ttl={}s",
             self.server.name,
             self.network.bind_address,
             self.storage.backend,
@@ -231,6 +246,7 @@ impl ServerConfig {
             db_url,
             self.storage.media_path,
             self.membership.mode,
+            self.auth.session_ttl_seconds,
         )
     }
 }
@@ -246,6 +262,7 @@ mod tests {
         assert_eq!(cfg.server.name, "decentcom");
         assert_eq!(cfg.storage.backend, StorageBackendType::Sqlite);
         assert_eq!(cfg.membership.mode, MembershipMode::Open);
+        assert_eq!(cfg.auth.session_ttl_seconds, 24 * 60 * 60);
     }
 
     #[test]
@@ -259,6 +276,7 @@ mod tests {
         assert_eq!(cfg.network.bind_address.to_string(), "127.0.0.1:8080");
         assert_eq!(cfg.storage.backend, StorageBackendType::Sqlite);
         assert!(cfg.features.voice_channels);
+        assert_eq!(cfg.auth.session_ttl_seconds, 24 * 60 * 60);
     }
 
     #[test]
@@ -291,6 +309,9 @@ mod tests {
             max_message_length = 2000
             max_file_size = 1048576
             allowed_file_types = ["image/png", "image/jpeg"]
+
+            [auth]
+            session_ttl_seconds = 3600
         "#;
         let cfg = ServerConfig::from_toml_str(toml).unwrap();
         assert_eq!(cfg.server.name, "My Community");
@@ -301,6 +322,7 @@ mod tests {
         assert_eq!(cfg.membership.mode, MembershipMode::InviteOnly);
         assert_eq!(cfg.content.max_message_length, 2000);
         assert_eq!(cfg.content.allowed_file_types.len(), 2);
+        assert_eq!(cfg.auth.session_ttl_seconds, 3600);
     }
 
     #[test]

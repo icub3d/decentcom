@@ -45,3 +45,7 @@ max_file_size = 26214400  # 25 MiB
 # Empty list allows all MIME types. Otherwise an allowlist:
 # allowed_file_types = ["image/png", "image/jpeg", "application/pdf"]
 allowed_file_types = []
+
+# --- Auth --------------------------------------------------------------------
+[auth]
+session_ttl_seconds = 86400

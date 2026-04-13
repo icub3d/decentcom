@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use axum::extract::FromRequestParts;
 use axum::extract::FromRef;
+use axum::extract::FromRequestParts;
 use axum::http::{header::AUTHORIZATION, request::Parts};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
@@ -54,10 +54,7 @@ where
 {
     type Rejection = AuthRejection;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &S,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let state = AppState::from_ref(state);
 
         let header = parts

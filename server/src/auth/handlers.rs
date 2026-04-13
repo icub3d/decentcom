@@ -7,7 +7,9 @@ use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use rand::RngCore;
 use serde::Serialize;
-use shared::auth::{AuthMeResponse, ChallengeRequest, ChallengeResponse, VerifyRequest, VerifyResponse};
+use shared::auth::{
+    AuthMeResponse, ChallengeRequest, ChallengeResponse, VerifyRequest, VerifyResponse,
+};
 
 use crate::auth::middleware::AuthUser;
 use crate::AppState;
@@ -30,9 +32,7 @@ pub(super) async fn challenge(
     let mut nonce = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut nonce);
 
-    state
-        .challenge_store
-        .insert(req.pubkey, nonce.to_vec());
+    state.challenge_store.insert(req.pubkey, nonce.to_vec());
 
     Ok(Json(ChallengeResponse {
         challenge: BASE64.encode(nonce),
@@ -43,9 +43,10 @@ pub(super) async fn verify(
     State(state): State<AppState>,
     Json(req): Json<VerifyRequest>,
 ) -> ApiResult<VerifyResponse> {
-    let verifying_key = parse_pubkey(&req.pubkey).map_err(|_| bad_request("invalid public key format"))?;
-    let signature = parse_signature(&req.signature)
-        .map_err(|_| bad_request("invalid signature format"))?;
+    let verifying_key =
+        parse_pubkey(&req.pubkey).map_err(|_| bad_request("invalid public key format"))?;
+    let signature =
+        parse_signature(&req.signature).map_err(|_| bad_request("invalid signature format"))?;
 
     let nonce = state
         .challenge_store
