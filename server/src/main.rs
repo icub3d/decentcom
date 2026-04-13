@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod storage;
 
@@ -25,11 +26,13 @@ struct Cli {
 pub struct AppState {
     pub config: Arc<ServerConfig>,
     pub storage: DynStorage,
+    pub challenge_store: auth::challenge::SharedChallengeStore,
 }
 
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
+    .nest("/api/v1/auth", auth::router())
         .with_state(state)
 }
 
@@ -67,6 +70,20 @@ fn spawn_session_cleanup(storage: DynStorage) {
     });
 }
 
+fn spawn_challenge_cleanup(challenge_store: auth::challenge::SharedChallengeStore) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        interval.tick().await; // skip immediate first tick
+        loop {
+            interval.tick().await;
+            let removed = challenge_store.purge_expired();
+            if removed > 0 {
+                info!(removed, "expired challenges cleaned up");
+            }
+        }
+    });
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
@@ -81,12 +98,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!(config = %config.summary(), "loaded configuration");
 
     let storage = init_storage(&config).await?;
+    let challenge_store = auth::challenge_store();
     spawn_session_cleanup(storage.clone());
+    spawn_challenge_cleanup(challenge_store.clone());
 
     let bind = config.network.bind_address;
     let state = AppState {
         config: Arc::new(config),
         storage,
+        challenge_store,
     };
     let listener = tokio::net::TcpListener::bind(bind).await?;
     info!(%bind, "listening");
@@ -107,6 +127,7 @@ mod tests {
         AppState {
             config: Arc::new(ServerConfig::default()),
             storage,
+            challenge_store: auth::challenge_store(),
         }
     }
 
@@ -140,6 +161,7 @@ mod tests {
         let state = AppState {
             config: Arc::new(cfg),
             storage,
+            challenge_store: auth::challenge_store(),
         };
         let response = app(state)
             .oneshot(
