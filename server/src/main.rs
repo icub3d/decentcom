@@ -11,7 +11,7 @@ use shared::HealthStatus;
 use tracing::{info, warn};
 
 use crate::config::{ServerConfig, StorageBackendType};
-use crate::storage::{SessionStore, SqliteStorage};
+use crate::storage::{DynStorage, SqliteStorage};
 
 #[derive(Parser, Debug)]
 #[command(name = "decentcom-server", version, about = "decentcom server")]
@@ -24,7 +24,7 @@ struct Cli {
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<ServerConfig>,
-    pub storage: Arc<SqliteStorage>,
+    pub storage: DynStorage,
 }
 
 pub fn app(state: AppState) -> Router {
@@ -37,7 +37,7 @@ async fn health(State(_state): State<AppState>) -> Json<HealthStatus> {
     Json(HealthStatus::ok())
 }
 
-async fn init_storage(config: &ServerConfig) -> Result<SqliteStorage, Box<dyn std::error::Error>> {
+async fn init_storage(config: &ServerConfig) -> Result<DynStorage, Box<dyn std::error::Error>> {
     match config.storage.backend {
         StorageBackendType::Sqlite => {
             let path = config
@@ -45,15 +45,14 @@ async fn init_storage(config: &ServerConfig) -> Result<SqliteStorage, Box<dyn st
                 .database_path
                 .as_ref()
                 .ok_or("storage.database_path is required for sqlite")?;
-            Ok(SqliteStorage::open(path).await?)
+            let sqlite = SqliteStorage::open(path).await?;
+            Ok(Arc::new(sqlite))
         }
-        StorageBackendType::Postgres => {
-            Err("postgres backend is not yet implemented".into())
-        }
+        StorageBackendType::Postgres => Err("postgres backend is not yet implemented".into()),
     }
 }
 
-fn spawn_session_cleanup(storage: Arc<SqliteStorage>) {
+fn spawn_session_cleanup(storage: DynStorage) {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(300));
         interval.tick().await; // skip immediate first tick
@@ -81,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = ServerConfig::load_or_default(&cli.config)?;
     info!(config = %config.summary(), "loaded configuration");
 
-    let storage = Arc::new(init_storage(&config).await?);
+    let storage = init_storage(&config).await?;
     spawn_session_cleanup(storage.clone());
 
     let bind = config.network.bind_address;
@@ -104,7 +103,7 @@ mod tests {
     use tower::ServiceExt;
 
     async fn test_state() -> AppState {
-        let storage = Arc::new(SqliteStorage::in_memory().await.unwrap());
+        let storage: DynStorage = Arc::new(SqliteStorage::in_memory().await.unwrap());
         AppState {
             config: Arc::new(ServerConfig::default()),
             storage,
@@ -137,9 +136,10 @@ mod tests {
             bind_address = "127.0.0.1:0"
         "#;
         let cfg = ServerConfig::from_toml_str(toml).unwrap();
+        let storage: DynStorage = Arc::new(SqliteStorage::in_memory().await.unwrap());
         let state = AppState {
             config: Arc::new(cfg),
-            storage: Arc::new(SqliteStorage::in_memory().await.unwrap()),
+            storage,
         };
         let response = app(state)
             .oneshot(

@@ -10,7 +10,13 @@ pub mod traits;
 use std::fmt;
 
 pub use sqlite::SqliteStorage;
-pub use traits::SessionStore;
+pub use traits::Storage;
+
+/// A boxed, backend-agnostic handle to persistent storage. Handlers and
+/// background tasks should depend on this type rather than any concrete
+/// backend, so backends (SQLite today, Postgres later) can be swapped at
+/// startup without touching call sites.
+pub type DynStorage = std::sync::Arc<dyn Storage>;
 
 #[derive(Debug)]
 pub enum StorageError {
