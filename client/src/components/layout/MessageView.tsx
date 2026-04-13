@@ -1,3 +1,4 @@
+import { SEND_MESSAGES, usePermissions } from "../../hooks/usePermissions";
 import type { Channel, Message } from "../../stores/serverStore";
 import { MessageList } from "../messages/MessageList";
 import { MessageInput } from "./MessageInput";
@@ -19,6 +20,8 @@ export function MessageView({
   onLoadMore,
   onSend,
 }: MessageViewProps) {
+  const permissions = usePermissions(channel?.id);
+
   if (!channel) {
     return (
       <section className="flex-1 flex items-center justify-center bg-ctp-base text-ctp-subtext0">
@@ -35,7 +38,7 @@ export function MessageView({
       <div className="flex-1 min-h-0">
         <MessageList messages={messages} hasMore={hasMore} onLoadMore={onLoadMore} />
       </div>
-      <MessageInput disabled={!connected} onSend={onSend} />
+      <MessageInput disabled={!connected || !permissions.has(SEND_MESSAGES)} onSend={onSend} />
     </section>
   );
 }

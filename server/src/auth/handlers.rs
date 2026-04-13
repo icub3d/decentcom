@@ -59,6 +59,7 @@ pub(super) async fn verify(
         .verify(challenge_text.as_bytes(), &signature)
         .map_err(|_| unauthorized("signature verification failed"))?;
 
+    let mut created_user = false;
     let user = match state
         .storage
         .get_user_by_pubkey(&req.pubkey)
@@ -66,12 +67,22 @@ pub(super) async fn verify(
         .map_err(internal)?
     {
         Some(existing) => existing,
-        None => state
-            .storage
-            .create_user(&req.pubkey, None)
-            .await
-            .map_err(internal)?,
+        None => {
+            created_user = true;
+            state
+                .storage
+                .create_user(&req.pubkey, None)
+                .await
+                .map_err(internal)?
+        }
     };
+
+    if created_user {
+        let users = state.storage.list_users().await.map_err(internal)?;
+        if users.len() == 1 {
+            let _ = state.storage.add_member_role(&user.id, "admin").await;
+        }
+    }
 
     let session = state
         .storage

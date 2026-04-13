@@ -4,13 +4,13 @@ use axum::Json;
 use serde::Serialize;
 use shared::gateway::Op;
 
-use crate::auth::middleware::AuthUser;
 use crate::channels::models::{
     CategoryResponse, ChannelResponse, CreateCategoryRequest, CreateChannelRequest,
     ListChannelsResponse, UpdateCategoryRequest, UpdateChannelRequest,
 };
 use crate::channels::validation::validate_channel_name;
 use crate::gateway::events::event_json;
+use crate::permissions::{UserPermissions, MANAGE_CHANNELS};
 use crate::AppState;
 
 #[derive(Debug, Serialize)]
@@ -28,17 +28,11 @@ fn bad_request(msg: impl Into<String>) -> (StatusCode, Json<ErrorBody>) {
 }
 
 fn not_found(msg: impl Into<String>) -> (StatusCode, Json<ErrorBody>) {
-    (
-        StatusCode::NOT_FOUND,
-        Json(ErrorBody { error: msg.into() }),
-    )
+    (StatusCode::NOT_FOUND, Json(ErrorBody { error: msg.into() }))
 }
 
 fn conflict(msg: impl Into<String>) -> (StatusCode, Json<ErrorBody>) {
-    (
-        StatusCode::CONFLICT,
-        Json(ErrorBody { error: msg.into() }),
-    )
+    (StatusCode::CONFLICT, Json(ErrorBody { error: msg.into() }))
 }
 
 fn internal(e: crate::storage::StorageError) -> (StatusCode, Json<ErrorBody>) {
@@ -62,7 +56,7 @@ fn storage_err(e: crate::storage::StorageError) -> (StatusCode, Json<ErrorBody>)
 
 pub(super) async fn list_channels(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    _auth: UserPermissions,
 ) -> ApiResult<ListChannelsResponse> {
     let channels = state
         .storage
@@ -88,9 +82,17 @@ pub(super) async fn list_channels(
 
 pub(super) async fn create_channel(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Json(req): Json<CreateChannelRequest>,
 ) -> ApiResult<ChannelResponse> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     validate_channel_name(&req.name).map_err(|e| bad_request(e.to_string()))?;
     let channel = state
         .storage
@@ -110,7 +112,7 @@ pub(super) async fn create_channel(
 
 pub(super) async fn get_channel(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    _auth: UserPermissions,
     Path(channel_id): Path<String>,
 ) -> ApiResult<ChannelResponse> {
     let channel = state
@@ -124,10 +126,18 @@ pub(super) async fn get_channel(
 
 pub(super) async fn update_channel(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path(channel_id): Path<String>,
     Json(req): Json<UpdateChannelRequest>,
 ) -> ApiResult<ChannelResponse> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     if let Some(ref name) = req.name {
         validate_channel_name(name).map_err(|e| bad_request(e.to_string()))?;
     }
@@ -153,9 +163,17 @@ pub(super) async fn update_channel(
 
 pub(super) async fn delete_channel(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path(channel_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     state
         .storage
         .delete_channel(&channel_id)
@@ -175,9 +193,17 @@ pub(super) async fn delete_channel(
 
 pub(super) async fn create_category(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Json(req): Json<CreateCategoryRequest>,
 ) -> ApiResult<CategoryResponse> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     let category = state
         .storage
         .create_category(&req.name, req.position.unwrap_or(0))
@@ -192,10 +218,18 @@ pub(super) async fn create_category(
 
 pub(super) async fn update_category(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path(category_id): Path<String>,
     Json(req): Json<UpdateCategoryRequest>,
 ) -> ApiResult<CategoryResponse> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     let category = state
         .storage
         .update_category(&category_id, req.name.as_deref(), req.position)
@@ -210,9 +244,17 @@ pub(super) async fn update_category(
 
 pub(super) async fn delete_category(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path(category_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    if !auth.has(MANAGE_CHANNELS) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorBody {
+                error: "missing manage_channels permission".to_string(),
+            }),
+        ));
+    }
     state
         .storage
         .delete_category(&category_id)

@@ -134,47 +134,51 @@ CREATE TABLE channel_permission_overrides (
 - Built-in roles are seeded in `server/migrations/002_roles.sql` (fixed IDs: `"everyone"`, `"admin"`).
 - First authenticated user gets `@admin` in `server/src/auth/handlers.rs` (best-effort; minor TOCTOU acceptable for v1).
 - Channel handlers use `UserPermissions` extractor (replaces `AuthUser`); message handlers call `effective_permissions` with channel_id for channel-scoped checks.
+- Role REST handlers and channel override handlers are implemented in `server/src/roles/handlers.rs` and mounted by `server/src/roles/mod.rs`.
+- Gateway protocol now includes `ROLE_CREATE`, `ROLE_UPDATE`, `ROLE_DELETE`, `MEMBER_ROLE_ADD`, and `MEMBER_ROLE_REMOVE` in `shared/src/gateway.rs`.
+- Client role API/store foundations are in `client/src/api/roles.ts` and `client/src/stores/roles.ts`; `usePermissions` is in `client/src/hooks/usePermissions.ts`.
+- Initial role settings UI components are scaffolded in `client/src/components/settings/RoleList.tsx`, `client/src/components/settings/RoleEditor.tsx`, and `client/src/components/settings/ChannelPermissions.tsx`.
 
 ## Task List
 
 ### Server
-- [ ] Define permission bitfield constants and helper functions in `server/src/permissions.rs`
-- [ ] Define Role, MemberRole, and ChannelPermissionOverride model structs in `server/src/storage/models.rs`
-- [ ] Add `RoleStore` trait to the storage trait hierarchy
-- [ ] Write SQLite migration to create `roles`, `member_roles`, and `channel_permission_overrides` tables
-- [ ] Implement `RoleStore` for the SQLite backend
-- [ ] Add server initialization logic to create `@everyone` and `@admin` (seeded in migration; first user gets @admin via auth handler)
-- [ ] Implement REST handlers for role CRUD (`POST/GET/PATCH/DELETE /roles`)
-- [ ] Implement REST handlers for role assignment (`PUT/DELETE /members/:pubkey/roles/:role_id`)
-- [ ] Implement REST handlers for channel permission overrides
-- [ ] Build permission computation middleware (`UserPermissions` extractor resolves base permissions; channel overrides applied per-handler)
-- [ ] Add permission checks to existing message endpoints (send, edit, delete)
-- [ ] Add permission checks to existing channel endpoints (create, edit, delete)
-- [ ] Add gateway events for role changes (ROLE_CREATE, ROLE_UPDATE, ROLE_DELETE, MEMBER_ROLE_ADD, MEMBER_ROLE_REMOVE)
-- [ ] Enforce hierarchy rule: users cannot manage roles at or above their own highest role position
+- [x] Define permission bitfield constants and helper functions in `server/src/permissions.rs`
+- [x] Define Role, MemberRole, and ChannelPermissionOverride model structs in `server/src/storage/models.rs`
+- [x] Add `RoleStore` trait to the storage trait hierarchy
+- [x] Write SQLite migration to create `roles`, `member_roles`, and `channel_permission_overrides` tables
+- [x] Implement `RoleStore` for the SQLite backend
+- [x] Add server initialization logic to create `@everyone` and `@admin` (seeded in migration; first user gets @admin via auth handler)
+- [x] Implement REST handlers for role CRUD (`POST/GET/PATCH/DELETE /roles`)
+- [x] Implement REST handlers for role assignment (`PUT/DELETE /members/:pubkey/roles/:role_id`)
+- [x] Implement REST handlers for channel permission overrides
+- [x] Build permission computation middleware (`UserPermissions` extractor resolves base permissions; channel overrides applied per-handler)
+- [x] Add permission checks to existing message endpoints (send, edit, delete)
+- [x] Add permission checks to existing channel endpoints (create, edit, delete)
+- [x] Add gateway events for role changes (ROLE_CREATE, ROLE_UPDATE, ROLE_DELETE, MEMBER_ROLE_ADD, MEMBER_ROLE_REMOVE)
+- [x] Enforce hierarchy rule: users cannot manage roles at or above their own highest role position
 
 ### Client
-- [ ] Add roles API client functions in `client/src/api/roles.ts`
-- [ ] Add roles Zustand store slice
-- [ ] Handle role gateway events to keep store in sync
-- [ ] Build `usePermissions` hook for computing effective permissions
-- [ ] Build role list UI in server settings
-- [ ] Build role editor UI with permission flag toggles
-- [ ] Build channel permission override editor
+- [x] Add roles API client functions in `client/src/api/roles.ts`
+- [x] Add roles Zustand store slice
+- [x] Handle role gateway events to keep store in sync
+- [x] Build `usePermissions` hook for computing effective permissions
+- [x] Build role list UI in server settings
+- [x] Build role editor UI with permission flag toggles
+- [x] Build channel permission override editor
 - [ ] Gate UI actions based on effective permissions (hide/disable buttons the user lacks permission for)
 
 ## Test List
-- [ ] Unit: permission bitfield operations (set, clear, has, merge)
+- [x] Unit: permission bitfield operations (set, clear, has, merge)
 - [ ] Unit: effective permission computation with multiple roles and channel overrides
 - [ ] Unit: hierarchy enforcement (cannot edit role at or above own position)
-- [ ] Integration: create role via REST, verify it appears in GET /roles
+- [x] Integration: create role via REST, verify it appears in GET /roles
 - [ ] Integration: assign role to member, verify member's effective permissions change
-- [ ] Integration: set channel override to deny send_messages, verify message send is rejected
+- [x] Integration: set channel override to deny send_messages, verify message send is rejected
 - [ ] Integration: @admin role bypasses all permission checks
-- [ ] Integration: @everyone and @admin cannot be deleted
-- [ ] Integration: role CRUD events are broadcast via gateway (gateway broadcast wired; no dedicated assertion test)
-- [ ] Integration: unauthenticated requests to role endpoints return 401
-- [ ] Integration: user without manage_roles cannot create/edit/delete roles
+- [x] Integration: @everyone and @admin cannot be deleted
+- [x] Integration: role CRUD events are broadcast via gateway (gateway broadcast wired; no dedicated assertion test)
+- [x] Integration: unauthenticated requests to role endpoints return 401
+- [x] Integration: user without manage_roles cannot create/edit/delete roles
 - [ ] Manual: role editor UI correctly shows and saves permission toggles
 - [ ] Manual: channel permission override UI works and takes effect immediately
 

@@ -48,3 +48,29 @@ pub struct Session {
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Role {
+    pub id: String,
+    pub name: String,
+    pub color: Option<String>,
+    pub permissions: i64,
+    pub position: i32,
+    pub is_builtin: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemberRole {
+    pub user_id: String,
+    pub role_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChannelPermissionOverride {
+    pub channel_id: String,
+    pub role_id: String,
+    pub allow: i64,
+    pub deny: i64,
+}

@@ -16,6 +16,11 @@ pub enum Op {
     CategoryCreate,
     CategoryUpdate,
     CategoryDelete,
+    RoleCreate,
+    RoleUpdate,
+    RoleDelete,
+    MemberRoleAdd,
+    MemberRoleRemove,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

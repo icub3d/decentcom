@@ -3,6 +3,8 @@ mod channels;
 mod config;
 mod gateway;
 mod messages;
+mod permissions;
+mod roles;
 mod storage;
 
 use std::path::PathBuf;
@@ -40,6 +42,7 @@ pub fn app(state: AppState) -> Router {
         .route("/health", get(health))
         .nest("/api/v1", channels::router())
         .nest("/api/v1", messages::router())
+        .nest("/api/v1", roles::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .layer(cors_layer())

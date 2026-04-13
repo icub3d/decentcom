@@ -4,10 +4,13 @@ use axum::Json;
 use serde::Serialize;
 use shared::gateway::Op;
 
-use crate::auth::middleware::AuthUser;
 use crate::gateway::events::event_json;
 use crate::messages::models::{
     CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, UpdateMessageRequest,
+};
+use crate::permissions::{
+    effective_permissions, has_permission, UserPermissions, MANAGE_MESSAGES, READ_MESSAGES,
+    SEND_MESSAGES,
 };
 use crate::AppState;
 
@@ -100,11 +103,17 @@ async fn ensure_channel_exists(
 
 pub(super) async fn create_message(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: UserPermissions,
     Path(channel_id): Path<String>,
     Json(req): Json<CreateMessageRequest>,
 ) -> ApiResult<MessageResponse> {
     ensure_channel_exists(&state, &channel_id).await?;
+    let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
+        .await
+        .map_err(internal)?;
+    if !has_permission(perms, SEND_MESSAGES) {
+        return Err(forbidden("missing send_messages permission"));
+    }
     validate_message_content(&req.content, state.config.content.max_message_length)?;
 
     let message = state
@@ -123,11 +132,17 @@ pub(super) async fn create_message(
 
 pub(super) async fn list_messages(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path(channel_id): Path<String>,
     Query(query): Query<ListMessagesQuery>,
 ) -> ApiResult<MessagePage> {
     ensure_channel_exists(&state, &channel_id).await?;
+    let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
+        .await
+        .map_err(internal)?;
+    if !has_permission(perms, READ_MESSAGES) {
+        return Err(forbidden("missing read_messages permission"));
+    }
 
     if query.after.is_some() {
         return Err(bad_request("after cursor is not implemented yet; use before"));
@@ -153,10 +168,16 @@ pub(super) async fn list_messages(
 
 pub(super) async fn get_message(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: UserPermissions,
     Path((channel_id, message_id)): Path<(String, String)>,
 ) -> ApiResult<MessageResponse> {
     ensure_channel_exists(&state, &channel_id).await?;
+    let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
+        .await
+        .map_err(internal)?;
+    if !has_permission(perms, READ_MESSAGES) {
+        return Err(forbidden("missing read_messages permission"));
+    }
 
     let message = state
         .storage
@@ -174,11 +195,17 @@ pub(super) async fn get_message(
 
 pub(super) async fn update_message(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: UserPermissions,
     Path((channel_id, message_id)): Path<(String, String)>,
     Json(req): Json<UpdateMessageRequest>,
 ) -> ApiResult<MessageResponse> {
     ensure_channel_exists(&state, &channel_id).await?;
+    let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
+        .await
+        .map_err(internal)?;
+    if !has_permission(perms, SEND_MESSAGES) {
+        return Err(forbidden("missing send_messages permission"));
+    }
     validate_message_content(&req.content, state.config.content.max_message_length)?;
 
     let existing = state
@@ -191,7 +218,7 @@ pub(super) async fn update_message(
     if existing.channel_id != channel_id {
         return Err(not_found("message not found"));
     }
-    if existing.author_id != auth.user_id {
+    if existing.author_id != auth.user_id && !has_permission(perms, MANAGE_MESSAGES) {
         return Err(forbidden("cannot edit another user's message"));
     }
     if existing.deleted {
@@ -214,10 +241,16 @@ pub(super) async fn update_message(
 
 pub(super) async fn delete_message(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: UserPermissions,
     Path((channel_id, message_id)): Path<(String, String)>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
     ensure_channel_exists(&state, &channel_id).await?;
+    let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
+        .await
+        .map_err(internal)?;
+    if !has_permission(perms, SEND_MESSAGES) {
+        return Err(forbidden("missing send_messages permission"));
+    }
 
     let existing = state
         .storage
@@ -229,7 +262,7 @@ pub(super) async fn delete_message(
     if existing.channel_id != channel_id {
         return Err(not_found("message not found"));
     }
-    if existing.author_id != auth.user_id {
+    if existing.author_id != auth.user_id && !has_permission(perms, MANAGE_MESSAGES) {
         return Err(forbidden("cannot delete another user's message"));
     }
 

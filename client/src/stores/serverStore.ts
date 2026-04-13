@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { ChannelPermissionOverride, Role } from "../api/roles";
+import { listRoles } from "../api/roles";
 import { apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
@@ -42,7 +44,13 @@ type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export interface GatewayEvent {
   op: string;
-  d: Message | Channel | Category | { id: string; channel_id?: string };
+  d:
+    | Message
+    | Channel
+    | Category
+    | Role
+    | { id: string; channel_id?: string }
+    | { user_id: string; role_id: string };
   t: number;
 }
 
@@ -51,8 +59,12 @@ export interface ServerStore {
   address: string;
   status: ConnectionStatus;
   sessionToken: string | null;
+  sessionUserId: string | null;
   channels: Channel[];
   categories: Category[];
+  roles: Role[];
+  memberRoleIdsByUserId: Record<string, string[]>;
+  channelOverridesByChannelId: Record<string, ChannelPermissionOverride[]>;
   currentChannelId: string | null;
   messages: Record<string, Message[]>;
   hasMore: Record<string, boolean>;
@@ -89,8 +101,12 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   address: "",
   status: "disconnected",
   sessionToken: null,
+  sessionUserId: null,
   channels: [],
   categories: [],
+  roles: [],
+  memberRoleIdsByUserId: {},
+  channelOverridesByChannelId: {},
   currentChannelId: null,
   messages: {},
   hasMore: {},
@@ -103,17 +119,19 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
     try {
       const session = await authenticateServer(normalized);
-      set({ sessionToken: session.token });
+      set({ sessionToken: session.token, sessionUserId: session.userId });
 
       const channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
         token: session.token,
       });
+      const roleData = await listRoles(normalized, session.token);
 
       const firstChannelId = channelData.channels[0]?.id ?? null;
 
       set({
         channels: sortChannels(channelData.channels),
         categories: sortCategories(channelData.categories),
+        roles: roleData,
         currentChannelId: firstChannelId,
       });
 
@@ -128,7 +146,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       set({ status: "connected" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      set({ status: "disconnected", error: message, sessionToken: null });
+      set({ status: "disconnected", error: message, sessionToken: null, sessionUserId: null });
       throw error;
     }
   },
@@ -138,8 +156,12 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     set({
       status: "disconnected",
       sessionToken: null,
+      sessionUserId: null,
       channels: [],
       categories: [],
+      roles: [],
+      memberRoleIdsByUserId: {},
+      channelOverridesByChannelId: {},
       currentChannelId: null,
       messages: {},
       hasMore: {},
@@ -285,6 +307,56 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         case "CATEGORY_DELETE": {
           const deleted = event.d as { id: string };
           return { categories: state.categories.filter((c) => c.id !== deleted.id) };
+        }
+        case "ROLE_CREATE": {
+          const role = event.d as Role;
+          return {
+            roles: [...state.roles.filter((r) => r.id !== role.id), role].sort(
+              (a, b) => b.position - a.position || a.name.localeCompare(b.name),
+            ),
+          };
+        }
+        case "ROLE_UPDATE": {
+          const role = event.d as Role;
+          return {
+            roles: state.roles
+              .map((r) => (r.id === role.id ? role : r))
+              .sort((a, b) => b.position - a.position || a.name.localeCompare(b.name)),
+          };
+        }
+        case "ROLE_DELETE": {
+          const deleted = event.d as { id: string };
+          const nextAssignments: Record<string, string[]> = {};
+          for (const [userId, roleIds] of Object.entries(state.memberRoleIdsByUserId)) {
+            nextAssignments[userId] = roleIds.filter((roleId) => roleId !== deleted.id);
+          }
+          return {
+            roles: state.roles.filter((role) => role.id !== deleted.id),
+            memberRoleIdsByUserId: nextAssignments,
+          };
+        }
+        case "MEMBER_ROLE_ADD": {
+          const payload = event.d as { user_id: string; role_id: string };
+          const existing = state.memberRoleIdsByUserId[payload.user_id] ?? [];
+          if (existing.includes(payload.role_id)) {
+            return {};
+          }
+          return {
+            memberRoleIdsByUserId: {
+              ...state.memberRoleIdsByUserId,
+              [payload.user_id]: [...existing, payload.role_id],
+            },
+          };
+        }
+        case "MEMBER_ROLE_REMOVE": {
+          const payload = event.d as { user_id: string; role_id: string };
+          const existing = state.memberRoleIdsByUserId[payload.user_id] ?? [];
+          return {
+            memberRoleIdsByUserId: {
+              ...state.memberRoleIdsByUserId,
+              [payload.user_id]: existing.filter((roleId) => roleId !== payload.role_id),
+            },
+          };
         }
         default:
           return {};

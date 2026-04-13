@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use std::time::Duration;
 
-use super::models::{Category, Channel, Message, Session, User};
+use super::models::{
+    Category, Channel, ChannelPermissionOverride, MemberRole, Message, Role, Session, User,
+};
 use super::StorageError;
 
 #[async_trait]
@@ -92,6 +94,56 @@ pub trait SessionStore: Send + Sync {
     async fn delete_expired_sessions(&self) -> Result<u64, StorageError>;
 }
 
+#[async_trait]
+pub trait RoleStore: Send + Sync {
+    async fn create_role(
+        &self,
+        name: &str,
+        color: Option<&str>,
+        permissions: i64,
+        position: i32,
+        is_builtin: bool,
+    ) -> Result<Role, StorageError>;
+    async fn get_role(&self, id: &str) -> Result<Option<Role>, StorageError>;
+    async fn list_roles(&self) -> Result<Vec<Role>, StorageError>;
+    async fn update_role(
+        &self,
+        id: &str,
+        name: Option<&str>,
+        color: Option<Option<&str>>,
+        permissions: Option<i64>,
+        position: Option<i32>,
+    ) -> Result<Role, StorageError>;
+    async fn delete_role(&self, id: &str) -> Result<(), StorageError>;
+
+    async fn add_member_role(
+        &self,
+        user_id: &str,
+        role_id: &str,
+    ) -> Result<MemberRole, StorageError>;
+    async fn remove_member_role(&self, user_id: &str, role_id: &str) -> Result<(), StorageError>;
+    async fn list_member_roles(&self, user_id: &str) -> Result<Vec<Role>, StorageError>;
+    async fn list_role_members(&self, role_id: &str) -> Result<Vec<MemberRole>, StorageError>;
+    async fn user_has_role(&self, user_id: &str, role_id: &str) -> Result<bool, StorageError>;
+
+    async fn upsert_channel_permission_override(
+        &self,
+        channel_id: &str,
+        role_id: &str,
+        allow: i64,
+        deny: i64,
+    ) -> Result<ChannelPermissionOverride, StorageError>;
+    async fn delete_channel_permission_override(
+        &self,
+        channel_id: &str,
+        role_id: &str,
+    ) -> Result<(), StorageError>;
+    async fn list_channel_permission_overrides(
+        &self,
+        channel_id: &str,
+    ) -> Result<Vec<ChannelPermissionOverride>, StorageError>;
+}
+
 /// Media storage is defined here but implementation is deferred to the
 /// file-uploads feature.
 #[async_trait]
@@ -108,6 +160,12 @@ pub trait MediaStore: Send + Sync {
     async fn delete(&self, id: &str) -> Result<(), StorageError>;
 }
 
-pub trait Storage: UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore {}
+pub trait Storage:
+    UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore
+{
+}
 
-impl<T> Storage for T where T: UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore {}
+impl<T> Storage for T where
+    T: UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore
+{
+}
