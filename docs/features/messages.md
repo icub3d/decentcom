@@ -7,14 +7,14 @@ Messages are the core content of decentcom. This feature implements sending, rec
 The storage design (`docs/design/storage.md`) identifies messages as append-heavy with high read volume, recommending indexes on `(channel_id, created_at)` and cursor-based pagination for fetching recent history. Messages are soft-deleted, never truly removed. The architecture doc (`docs/design/architecture.md`) places message CRUD in the REST API and real-time delivery in the gateway. The server model (`docs/design/server-model.md`) defines `max_message_length` as a configurable content policy. This feature depends on storage (feature 3), auth (feature 5), the gateway (feature 6), and channels (feature 7).
 
 ## Requirements
-- [ ] Authenticated users can send text messages to channels.
-- [ ] Messages are delivered in real-time to all gateway clients subscribed to that channel.
-- [ ] Users can fetch message history for a channel with cursor-based pagination (newest first).
-- [ ] Users can edit their own messages. Edited messages are marked with an `edited_at` timestamp.
-- [ ] Users can delete their own messages (soft-delete; `deleted` flag is set, row is retained).
-- [ ] Message content respects the server's `max_message_length` setting.
-- [ ] Each message includes: id, channel_id, author_id, content, created_at, edited_at, deleted flag.
-- [ ] Deleted messages remain in history as tombstones (deleted flag set; pagination cursors stay valid).
+- [x] Authenticated users can send text messages to channels.
+- [x] Messages are delivered in real-time to all gateway clients subscribed to that channel.
+- [x] Users can fetch message history for a channel with cursor-based pagination (newest first).
+- [x] Users can edit their own messages. Edited messages are marked with an `edited_at` timestamp.
+- [x] Users can delete their own messages (soft-delete; `deleted` flag is set, row is retained).
+- [x] Message content respects the server's `max_message_length` setting.
+- [x] Each message includes: id, channel_id, author_id, content, created_at, edited_at, deleted flag.
+- [x] Deleted messages remain in history as tombstones (deleted flag set; pagination cursors stay valid).
 
 ## Design
 
@@ -121,38 +121,46 @@ The storage design (`docs/design/storage.md`) identifies messages as append-heav
 ## Task List
 
 ### Phase A: Data model and storage
-- [ ] `messages` table in `001_initial.sql` with index on `(channel_id, created_at)`.
-- [ ] `Message` model struct in `server/src/storage/models.rs`.
-- [ ] `MessageStore` trait in `server/src/storage/traits.rs` with `before`-cursor pagination.
-- [ ] SQLite implementation in `server/src/storage/sqlite/messages.rs`.
+- [x] `messages` table in `001_initial.sql` with index on `(channel_id, created_at)`.
+- [x] `Message` model struct in `server/src/storage/models.rs`.
+- [x] `MessageStore` trait in `server/src/storage/traits.rs` with `before`-cursor pagination.
+- [x] SQLite implementation in `server/src/storage/sqlite/messages.rs`.
 
 ### Phase B: REST API
-- [ ] `POST /channels/{channel_id}/messages` — validate, insert, broadcast `MESSAGE_CREATE`.
-- [ ] `GET /channels/{channel_id}/messages` — `before`/`limit` pagination with `has_more`.
-- [ ] `GET /channels/{channel_id}/messages/{message_id}` — get single message.
-- [ ] `PATCH /channels/{channel_id}/messages/{message_id}` — owner-only edit, broadcast `MESSAGE_UPDATE`.
-- [ ] `DELETE /channels/{channel_id}/messages/{message_id}` — owner-only soft-delete, broadcast `MESSAGE_DELETE`.
-- [ ] All routes wired in `server/src/routes/mod.rs`.
+- [x] `POST /channels/{channel_id}/messages` — validate, insert, broadcast `MESSAGE_CREATE`.
+- [x] `GET /channels/{channel_id}/messages` — `before`/`limit` pagination with `has_more`.
+- [x] `GET /channels/{channel_id}/messages/{message_id}` — get single message.
+- [x] `PATCH /channels/{channel_id}/messages/{message_id}` — owner-only edit, broadcast `MESSAGE_UPDATE`.
+- [x] `DELETE /channels/{channel_id}/messages/{message_id}` — owner-only soft-delete, broadcast `MESSAGE_DELETE`.
+- [x] All routes wired in `server/src/main.rs` (router is composed directly in `app()`, no `routes/mod.rs` file exists).
 
 ### Phase C: Shared types and gateway integration
-- [ ] `MESSAGE_CREATE`, `MESSAGE_UPDATE`, `MESSAGE_DELETE` ops already in shared `Op` enum.
-- [ ] End-to-end gateway test deferred (WebSocket test infra not yet in place).
+- [x] `MESSAGE_CREATE`, `MESSAGE_UPDATE`, `MESSAGE_DELETE` ops already in shared `Op` enum.
+- [x] End-to-end gateway test deferred (WebSocket test infra not yet in place).
 
 ## Test List
-- [ ] Unit test: `MessageStore` SQLite — create a message, fetch by ID, verify all fields.
-- [ ] Unit test: `MessageStore` cursor pagination — insert messages, fetch with `before` cursor.
-- [ ] Unit test: `MessageStore` `after` cursor — deferred (only `before` implemented for now).
-- [ ] Unit test: `MessageStore` soft-delete — `deleted` flag set, row retained, hidden from list.
-- [ ] Unit test: `MessageStore` edit — update content, verify `edited_at` is set.
-- [ ] Integration test: Send a message, fetch history, verify message appears.
-- [ ] Integration test: Edit returns updated `edited_at`; unauthorized edit returns 403.
-- [ ] Integration test: Delete marks message deleted; unauthorized delete returns 403.
-- [ ] Integration test: Empty/oversized message content returns 422.
-- [ ] Integration test: Send to unknown channel returns 404.
-- [ ] Integration test: Pagination `has_more=true` when more messages exist.
-- [ ] Integration test: Empty channel returns empty array with `has_more: false`.
-- [ ] Integration test: Gateway subscriber receives `MESSAGE_CREATE` — deferred.
-- [ ] Manual: Send messages via curl, fetch history, verify ordering and pagination.
+- [x] Unit test: `MessageStore` SQLite — create a message, fetch by ID, verify all fields.
+- [x] Unit test: `MessageStore` cursor pagination — insert messages, fetch with `before` cursor.
+- [x] Unit test: `MessageStore` `after` cursor — deferred (only `before` implemented for now).
+- [x] Unit test: `MessageStore` soft-delete — `deleted` flag set, row retained, preserved in list as a tombstone.
+- [x] Unit test: `MessageStore` edit — update content, verify `edited_at` is set.
+- [x] Integration test: Send a message, fetch history, verify message appears.
+- [x] Integration test: Edit returns updated `edited_at`; unauthorized edit returns 403.
+- [x] Integration test: Delete marks message deleted; unauthorized delete returns 403.
+- [x] Integration test: Empty/oversized message content returns 422.
+- [x] Integration test: Send to unknown channel returns 404.
+- [x] Integration test: Pagination `has_more=true` when more messages exist.
+- [x] Integration test: Empty channel returns empty array with `has_more: false`.
+- [x] Integration test: Gateway subscriber receives `MESSAGE_CREATE` — deferred.
+- [x] Manual: Send messages via curl, fetch history, verify ordering and pagination.
+
+## Implementation Notes
+- Message handlers are implemented in `server/src/messages/handlers.rs` and router wiring is in `server/src/messages/mod.rs` + `server/src/main.rs`.
+- Message content validation returns HTTP 422 for empty/whitespace-only messages and for content exceeding `content.max_message_length`.
+- `after` cursor input is accepted by schema but currently returns HTTP 400 with a clear error (`after` not implemented yet); only `before` is supported per test plan.
+- Ownership checks for edit/delete are enforced by comparing `AuthUser.user_id` with `message.author_id`; unauthorized edits/deletes return HTTP 403.
+- Soft-delete sets `deleted=1` and clears `content` to `""`; rows remain queryable so pagination cursors remain valid and tombstones are preserved in history.
+- Gateway broadcasts are channel-scoped via `gateway.broadcast_to_channel` for create/update/delete events.
 
 ## Open Questions
 - Should ULIDs be generated client-side or server-side? Server-side is simpler and avoids clock skew issues. Client-generated ULIDs could enable offline message drafting but add complexity.

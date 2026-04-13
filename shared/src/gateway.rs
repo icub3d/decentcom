@@ -8,6 +8,8 @@ pub enum Op {
     Ready,
     Heartbeat,
     MessageCreate,
+    MessageUpdate,
+    MessageDelete,
     ChannelCreate,
     ChannelUpdate,
     ChannelDelete,
@@ -66,10 +68,7 @@ impl<'de> Deserialize<'de> for ClientCommand {
         D: serde::Deserializer<'de>,
     {
         let value = Value::deserialize(deserializer)?;
-        let op = value
-            .get("op")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
+        let op = value.get("op").and_then(Value::as_str).unwrap_or_default();
 
         match op {
             "SUBSCRIBE" => {
@@ -91,9 +90,12 @@ impl<'de> Deserialize<'de> for ClientCommand {
                 Ok(ClientCommand::Unsubscribe(payload))
             }
             "HEARTBEAT_ACK" => {
-                let data = value.get("d").cloned().unwrap_or_else(|| Value::Object(Default::default()));
-                let payload = serde_json::from_value::<EmptyData>(data)
-                    .map_err(serde::de::Error::custom)?;
+                let data = value
+                    .get("d")
+                    .cloned()
+                    .unwrap_or_else(|| Value::Object(Default::default()));
+                let payload =
+                    serde_json::from_value::<EmptyData>(data).map_err(serde::de::Error::custom)?;
                 Ok(ClientCommand::HeartbeatAck(payload))
             }
             _ => Ok(ClientCommand::Unknown),

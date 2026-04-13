@@ -40,7 +40,7 @@ impl MessageStore for SqliteStorage {
     }
 
     async fn get_message(&self, id: &str) -> Result<Option<Message>, StorageError> {
-        let row = sqlx::query("SELECT * FROM messages WHERE id = ? AND deleted = 0")
+        let row = sqlx::query("SELECT * FROM messages WHERE id = ?")
             .bind(id)
             .fetch_optional(self.pool())
             .await?;
@@ -58,7 +58,7 @@ impl MessageStore for SqliteStorage {
             Some(cursor) => {
                 sqlx::query(
                     "SELECT * FROM messages
-                     WHERE channel_id = ? AND deleted = 0 AND id < ?
+                     WHERE channel_id = ? AND id < ?
                      ORDER BY id DESC
                      LIMIT ?",
                 )
@@ -71,7 +71,7 @@ impl MessageStore for SqliteStorage {
             None => {
                 sqlx::query(
                     "SELECT * FROM messages
-                     WHERE channel_id = ? AND deleted = 0
+                     WHERE channel_id = ?
                      ORDER BY id DESC
                      LIMIT ?",
                 )
@@ -102,7 +102,12 @@ impl MessageStore for SqliteStorage {
     }
 
     async fn delete_message(&self, id: &str) -> Result<(), StorageError> {
-        let result = sqlx::query("UPDATE messages SET deleted = 1 WHERE id = ?")
+        let result = sqlx::query(
+            "UPDATE messages
+             SET deleted = 1,
+                 content = ''
+             WHERE id = ?",
+        )
             .bind(id)
             .execute(self.pool())
             .await?;
@@ -169,8 +174,23 @@ mod tests {
         let (s, uid, cid) = setup().await;
         let m = s.create_message(&cid, &uid, "bye").await.unwrap();
         s.delete_message(&m.id).await.unwrap();
-        assert!(s.get_message(&m.id).await.unwrap().is_none());
+        let got = s.get_message(&m.id).await.unwrap().unwrap();
+        assert!(got.deleted);
+        assert_eq!(got.content, "");
         let list = s.list_messages(&cid, None, 50).await.unwrap();
-        assert!(list.is_empty());
+        assert_eq!(list.len(), 1);
+        assert!(list[0].deleted);
+        assert_eq!(list[0].content, "");
+    }
+
+    #[tokio::test]
+    async fn edit_sets_edited_at() {
+        let (s, uid, cid) = setup().await;
+        let m = s.create_message(&cid, &uid, "first").await.unwrap();
+        assert!(m.edited_at.is_none());
+
+        let updated = s.update_message(&m.id, "second").await.unwrap();
+        assert_eq!(updated.content, "second");
+        assert!(updated.edited_at.is_some());
     }
 }

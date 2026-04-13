@@ -2,6 +2,7 @@ mod auth;
 mod channels;
 mod config;
 mod gateway;
+mod messages;
 mod storage;
 
 use std::path::PathBuf;
@@ -36,6 +37,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .nest("/api/v1", channels::router())
+        .nest("/api/v1", messages::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .with_state(state)
