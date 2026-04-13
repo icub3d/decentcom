@@ -1,0 +1,294 @@
+import { create } from "zustand";
+
+import { apiRequest } from "../services/api";
+import { authenticateServer } from "../services/auth";
+import { GatewayClient } from "../services/gateway";
+
+export interface Channel {
+  id: string;
+  name: string;
+  category_id: string | null;
+  position: number;
+  type: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  position: number;
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  edited_at: string | null;
+  deleted: boolean;
+}
+
+interface ChannelsResponse {
+  channels: Channel[];
+  categories: Category[];
+}
+
+interface MessagePage {
+  messages: Message[];
+  has_more: boolean;
+}
+
+type ConnectionStatus = "connecting" | "connected" | "disconnected";
+
+export interface GatewayEvent {
+  op: string;
+  d: Message | Channel | Category | { id: string; channel_id?: string };
+  t: number;
+}
+
+export interface ServerStore {
+  serverId: string;
+  address: string;
+  status: ConnectionStatus;
+  sessionToken: string | null;
+  channels: Channel[];
+  categories: Category[];
+  currentChannelId: string | null;
+  messages: Record<string, Message[]>;
+  hasMore: Record<string, boolean>;
+  error: string | null;
+  gateway: GatewayClient | null;
+
+  connect: (address: string) => Promise<void>;
+  disconnect: () => void;
+  setCurrentChannel: (id: string) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+  loadMoreMessages: (channelId: string) => Promise<void>;
+  setStatus: (status: ConnectionStatus) => void;
+  handleGatewayEvent: (event: GatewayEvent) => void;
+}
+
+function normalizeAddress(address: string): string {
+  const trimmed = address.trim().replace(/\/$/, "");
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `http://${trimmed}`;
+}
+
+function sortChannels(channels: Channel[]): Channel[] {
+  return [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+}
+
+function sortCategories(categories: Category[]): Category[] {
+  return [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+}
+
+export const useServerStore = create<ServerStore>((set, get) => ({
+  serverId: "",
+  address: "",
+  status: "disconnected",
+  sessionToken: null,
+  channels: [],
+  categories: [],
+  currentChannelId: null,
+  messages: {},
+  hasMore: {},
+  error: null,
+  gateway: null,
+
+  connect: async (address: string) => {
+    const normalized = normalizeAddress(address);
+    set({ status: "connecting", error: null, address: normalized, serverId: normalized });
+
+    try {
+      const session = await authenticateServer(normalized);
+      set({ sessionToken: session.token });
+
+      const channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
+        token: session.token,
+      });
+
+      const firstChannelId = channelData.channels[0]?.id ?? null;
+
+      set({
+        channels: sortChannels(channelData.channels),
+        categories: sortCategories(channelData.categories),
+        currentChannelId: firstChannelId,
+      });
+
+      const gateway = get().gateway ?? new GatewayClient(get);
+      set({ gateway });
+      gateway.reconnect();
+
+      if (firstChannelId) {
+        await get().loadMoreMessages(firstChannelId);
+      }
+
+      set({ status: "connected" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      set({ status: "disconnected", error: message, sessionToken: null });
+      throw error;
+    }
+  },
+
+  disconnect: () => {
+    get().gateway?.disconnect();
+    set({
+      status: "disconnected",
+      sessionToken: null,
+      channels: [],
+      categories: [],
+      currentChannelId: null,
+      messages: {},
+      hasMore: {},
+    });
+  },
+
+  setCurrentChannel: async (id: string) => {
+    const { currentChannelId, gateway } = get();
+    if (currentChannelId === id) {
+      return;
+    }
+
+    if (currentChannelId) {
+      gateway?.unsubscribe(currentChannelId);
+    }
+
+    set({ currentChannelId: id });
+    gateway?.subscribe(id);
+
+    if (!get().messages[id]) {
+      await get().loadMoreMessages(id);
+    }
+  },
+
+  sendMessage: async (content: string) => {
+    const state = get();
+    if (!state.currentChannelId || !state.sessionToken) {
+      return;
+    }
+
+    await apiRequest<Message>(
+      state.address,
+      `/api/v1/channels/${state.currentChannelId}/messages`,
+      {
+        method: "POST",
+        token: state.sessionToken,
+        body: JSON.stringify({ content }),
+      },
+    );
+  },
+
+  loadMoreMessages: async (channelId: string) => {
+    const state = get();
+    if (!state.sessionToken) {
+      return;
+    }
+
+    const existing = state.messages[channelId] ?? [];
+    const oldestId = existing.at(-1)?.id;
+    const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
+
+    const page = await apiRequest<MessagePage>(
+      state.address,
+      `/api/v1/channels/${channelId}/messages${query}`,
+      {
+        token: state.sessionToken,
+      },
+    );
+
+    set((prev) => ({
+      messages: {
+        ...prev.messages,
+        [channelId]: [...existing, ...page.messages],
+      },
+      hasMore: {
+        ...prev.hasMore,
+        [channelId]: page.has_more,
+      },
+    }));
+  },
+
+  setStatus: (status) => set({ status }),
+
+  handleGatewayEvent: (event: GatewayEvent) => {
+    set((state) => {
+      switch (event.op) {
+        case "MESSAGE_CREATE": {
+          const message = event.d as Message;
+          const existing = state.messages[message.channel_id] ?? [];
+          if (existing.some((m) => m.id === message.id)) {
+            return {};
+          }
+          return {
+            messages: {
+              ...state.messages,
+              [message.channel_id]: [message, ...existing],
+            },
+          };
+        }
+        case "MESSAGE_UPDATE": {
+          const message = event.d as Message;
+          const existing = state.messages[message.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [message.channel_id]: existing.map((m) => (m.id === message.id ? message : m)),
+            },
+          };
+        }
+        case "MESSAGE_DELETE": {
+          const deleted = event.d as { id: string; channel_id: string };
+          const existing = state.messages[deleted.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [deleted.channel_id]: existing.map((m) =>
+                m.id === deleted.id ? { ...m, deleted: true, content: "" } : m,
+              ),
+            },
+          };
+        }
+        case "CHANNEL_CREATE": {
+          const channel = event.d as Channel;
+          return { channels: sortChannels([...state.channels, channel]) };
+        }
+        case "CHANNEL_UPDATE": {
+          const channel = event.d as Channel;
+          return {
+            channels: sortChannels(
+              state.channels.map((c) => (c.id === channel.id ? channel : c)),
+            ),
+          };
+        }
+        case "CHANNEL_DELETE": {
+          const deleted = event.d as { id: string };
+          const nextChannels = state.channels.filter((c) => c.id !== deleted.id);
+          const nextCurrent =
+            state.currentChannelId === deleted.id ? nextChannels[0]?.id ?? null : state.currentChannelId;
+          return { channels: nextChannels, currentChannelId: nextCurrent };
+        }
+        case "CATEGORY_CREATE": {
+          const category = event.d as Category;
+          return { categories: sortCategories([...state.categories, category]) };
+        }
+        case "CATEGORY_UPDATE": {
+          const category = event.d as Category;
+          return {
+            categories: sortCategories(
+              state.categories.map((c) => (c.id === category.id ? category : c)),
+            ),
+          };
+        }
+        case "CATEGORY_DELETE": {
+          const deleted = event.d as { id: string };
+          return { categories: state.categories.filter((c) => c.id !== deleted.id) };
+        }
+        default:
+          return {};
+      }
+    });
+  },
+}));

@@ -5,9 +5,12 @@ mod users;
 
 use std::path::Path;
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use sqlx::migrate::MigrateError;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::SqlitePool;
+use tracing::warn;
 use ulid::Generator;
 
 use super::StorageError;
@@ -31,7 +34,45 @@ impl SqliteStorage {
             .connect_with(opts)
             .await
             .map_err(StorageError::from)?;
-        MIGRATOR.run(&pool).await?;
+        if let Err(err) = MIGRATOR.run(&pool).await {
+            if cfg!(debug_assertions) && matches!(err, MigrateError::VersionMismatch(_)) {
+                drop(pool);
+
+                let backup_path = backup_path_for(path);
+                std::fs::rename(path, &backup_path).map_err(|e| {
+                    StorageError::Internal(format!(
+                        "failed to backup sqlite database after migration mismatch: {e}"
+                    ))
+                })?;
+
+                warn!(
+                    db_path = %path.display(),
+                    backup_path = %backup_path.display(),
+                    "migration version mismatch detected; backed up old database and recreating a fresh one"
+                );
+
+                let recreated_opts = SqliteConnectOptions::new()
+                    .filename(path)
+                    .create_if_missing(true)
+                    .journal_mode(SqliteJournalMode::Wal)
+                    .foreign_keys(true);
+
+                let recreated_pool = SqlitePoolOptions::new()
+                    .connect_with(recreated_opts)
+                    .await
+                    .map_err(StorageError::from)?;
+
+                MIGRATOR.run(&recreated_pool).await?;
+
+                return Ok(Self {
+                    pool: recreated_pool,
+                    id_gen: Mutex::new(Generator::new()),
+                });
+            }
+
+            return Err(StorageError::from(err));
+        }
+
         Ok(Self {
             pool,
             id_gen: Mutex::new(Generator::new()),
@@ -70,6 +111,20 @@ impl SqliteStorage {
             .expect("ulid generator overflow within single millisecond")
             .to_string()
     }
+}
+
+fn backup_path_for(path: &Path) -> std::path::PathBuf {
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("decentcom.db");
+
+    path.with_file_name(format!("{file_name}.bak-{ts}"))
 }
 
 #[cfg(test)]

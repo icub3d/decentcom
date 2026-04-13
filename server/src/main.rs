@@ -9,9 +9,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::http::{header, Method};
 use axum::{extract::State, routing::get, Json, Router};
 use clap::Parser;
 use shared::HealthStatus;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
 use crate::config::{ServerConfig, StorageBackendType};
@@ -40,7 +42,23 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", messages::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
+        .layer(cors_layer())
         .with_state(state)
+}
+
+fn cors_layer() -> CorsLayer {
+    // Tauri WebView requests originate from non-http origins; allow REST calls
+    // in development until we add a stricter per-origin server config.
+    CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
 }
 
 async fn health(State(_state): State<AppState>) -> Json<HealthStatus> {
