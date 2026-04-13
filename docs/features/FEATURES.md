@@ -19,8 +19,8 @@ The minimum to have a working server and client that can exchange messages.
 | 7 | Channels | `channels` | Create/list/edit/delete text channels and categories, channel ordering, REST API endpoints, real-time channel events via gateway | ✅ |
 | 8 | Messages | `messages` | Send/receive/edit/delete messages in channels, message history with cursor-based pagination, real-time delivery via gateway | ✅ |
 
-| 9 | Client Shell | `client-shell` | React app layout: server sidebar, channel list, message view, message input. Zustand state management. Connect to one server, authenticate, send and receive messages |
-| 10 | Theming | `theming` | Catppuccin theme integration (Mocha default), theme switcher (Latte, Frappe, Macchiato, Mocha), user preference persistence, Tailwind CSS config |
+| 9 | Client Shell | `client-shell` | React app layout: server sidebar, channel list, message view, message input. Zustand state management. Connect to one server, authenticate, send and receive messages | ✅ |
+ 10 | Theming | `theming` | Catppuccin theme integration (Mocha default), theme switcher (Latte, Frappe, Macchiato, Mocha), user preference persistence, Tailwind CSS config |
 
 ## Phase 2: Core UX
 
