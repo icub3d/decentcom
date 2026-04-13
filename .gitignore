@@ -4,5 +4,10 @@ client/dist/
 *.db
 *.db-shm
 *.db-wal
+*.db.bak-*
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite.bak-*
 decentcom.toml
 server/media
