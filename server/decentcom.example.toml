@@ -49,3 +49,8 @@ allowed_file_types = []
 # --- Auth --------------------------------------------------------------------
 [auth]
 session_ttl_seconds = 86400
+
+# --- Gateway -----------------------------------------------------------------
+[gateway]
+heartbeat_interval_ms = 30000
+heartbeat_ack_timeout_ms = 10000

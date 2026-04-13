@@ -14,6 +14,7 @@ pub struct ServerConfig {
     pub membership: MembershipConfig,
     pub content: ContentPolicy,
     pub auth: AuthConfig,
+    pub gateway: GatewayConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,6 +88,13 @@ pub struct AuthConfig {
     pub session_ttl_seconds: u64,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GatewayConfig {
+    pub heartbeat_interval_ms: u64,
+    pub heartbeat_ack_timeout_ms: u64,
+}
+
 impl Default for ServerIdentity {
     fn default() -> Self {
         Self {
@@ -152,6 +160,15 @@ impl Default for AuthConfig {
     fn default() -> Self {
         Self {
             session_ttl_seconds: 24 * 60 * 60,
+        }
+    }
+}
+
+impl Default for GatewayConfig {
+    fn default() -> Self {
+        Self {
+            heartbeat_interval_ms: 30_000,
+            heartbeat_ack_timeout_ms: 10_000,
         }
     }
 }
@@ -238,7 +255,7 @@ impl ServerConfig {
             .map(|_| "<redacted>")
             .unwrap_or("<unset>");
         format!(
-            "name={:?} bind={} backend={:?} db_path={:?} db_url={} media={:?} membership={:?} auth_ttl={}s",
+            "name={:?} bind={} backend={:?} db_path={:?} db_url={} media={:?} membership={:?} auth_ttl={}s hb={}ms ack={}ms",
             self.server.name,
             self.network.bind_address,
             self.storage.backend,
@@ -247,6 +264,8 @@ impl ServerConfig {
             self.storage.media_path,
             self.membership.mode,
             self.auth.session_ttl_seconds,
+            self.gateway.heartbeat_interval_ms,
+            self.gateway.heartbeat_ack_timeout_ms,
         )
     }
 }
@@ -263,6 +282,8 @@ mod tests {
         assert_eq!(cfg.storage.backend, StorageBackendType::Sqlite);
         assert_eq!(cfg.membership.mode, MembershipMode::Open);
         assert_eq!(cfg.auth.session_ttl_seconds, 24 * 60 * 60);
+        assert_eq!(cfg.gateway.heartbeat_interval_ms, 30_000);
+        assert_eq!(cfg.gateway.heartbeat_ack_timeout_ms, 10_000);
     }
 
     #[test]
@@ -277,6 +298,8 @@ mod tests {
         assert_eq!(cfg.storage.backend, StorageBackendType::Sqlite);
         assert!(cfg.features.voice_channels);
         assert_eq!(cfg.auth.session_ttl_seconds, 24 * 60 * 60);
+        assert_eq!(cfg.gateway.heartbeat_interval_ms, 30_000);
+        assert_eq!(cfg.gateway.heartbeat_ack_timeout_ms, 10_000);
     }
 
     #[test]
@@ -312,6 +335,10 @@ mod tests {
 
             [auth]
             session_ttl_seconds = 3600
+
+            [gateway]
+            heartbeat_interval_ms = 20000
+            heartbeat_ack_timeout_ms = 5000
         "#;
         let cfg = ServerConfig::from_toml_str(toml).unwrap();
         assert_eq!(cfg.server.name, "My Community");
@@ -323,6 +350,8 @@ mod tests {
         assert_eq!(cfg.content.max_message_length, 2000);
         assert_eq!(cfg.content.allowed_file_types.len(), 2);
         assert_eq!(cfg.auth.session_ttl_seconds, 3600);
+        assert_eq!(cfg.gateway.heartbeat_interval_ms, 20000);
+        assert_eq!(cfg.gateway.heartbeat_ack_timeout_ms, 5000);
     }
 
     #[test]

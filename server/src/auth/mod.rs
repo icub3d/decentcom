@@ -44,6 +44,7 @@ mod tests {
             config: Arc::new(ServerConfig::default()),
             storage,
             challenge_store: super::challenge_store(),
+            gateway: crate::gateway::gateway_handle(),
         }
     }
 
@@ -112,7 +113,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(bad_sig)}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(bad_sig)})
+                    .to_string(),
             ))
             .unwrap();
         let resp = router.oneshot(req).await.unwrap();
@@ -132,7 +134,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
             ))
             .unwrap();
         let resp = router.oneshot(req).await.unwrap();
@@ -156,7 +159,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
             ))
             .unwrap();
         let resp = router.oneshot(req).await.unwrap();
@@ -206,6 +210,7 @@ mod tests {
             config: Arc::new(cfg),
             storage,
             challenge_store: super::challenge_store(),
+            gateway: crate::gateway::gateway_handle(),
         };
         let router = app(state);
 
@@ -237,7 +242,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
             ))
             .unwrap();
         let verify_resp = router.clone().oneshot(verify_req).await.unwrap();
@@ -273,7 +279,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
             ))
             .unwrap();
         let verify_resp = router.clone().oneshot(verify_req).await.unwrap();
@@ -312,7 +319,8 @@ mod tests {
             .uri("/api/v1/auth/verify")
             .header("content-type", "application/json")
             .body(Body::from(
-                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())}).to_string(),
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
             ))
             .unwrap();
         let verify_resp = router.clone().oneshot(verify_req).await.unwrap();

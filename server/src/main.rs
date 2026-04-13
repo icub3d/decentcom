@@ -1,5 +1,6 @@
 mod auth;
 mod config;
+mod gateway;
 mod storage;
 
 use std::path::PathBuf;
@@ -27,12 +28,14 @@ pub struct AppState {
     pub config: Arc<ServerConfig>,
     pub storage: DynStorage,
     pub challenge_store: auth::challenge::SharedChallengeStore,
+    pub gateway: gateway::GatewayHandle,
 }
 
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
-    .nest("/api/v1/auth", auth::router())
+        .nest("/api/v1/auth", auth::router())
+        .nest("/api/v1/gateway", gateway::router())
         .with_state(state)
 }
 
@@ -107,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: Arc::new(config),
         storage,
         challenge_store,
+        gateway: gateway::gateway_handle(),
     };
     let listener = tokio::net::TcpListener::bind(bind).await?;
     info!(%bind, "listening");
@@ -128,6 +132,7 @@ mod tests {
             config: Arc::new(ServerConfig::default()),
             storage,
             challenge_store: auth::challenge_store(),
+            gateway: gateway::gateway_handle(),
         }
     }
 
@@ -162,6 +167,7 @@ mod tests {
             config: Arc::new(cfg),
             storage,
             challenge_store: auth::challenge_store(),
+            gateway: gateway::gateway_handle(),
         };
         let response = app(state)
             .oneshot(
@@ -179,15 +185,11 @@ mod tests {
     async fn storage_error_variants_display() {
         use crate::storage::StorageError;
         assert!(StorageError::NotFound.to_string().contains("not found"));
-        assert!(
-            StorageError::Conflict("dup".into())
-                .to_string()
-                .contains("dup")
-        );
-        assert!(
-            StorageError::Internal("boom".into())
-                .to_string()
-                .contains("boom")
-        );
+        assert!(StorageError::Conflict("dup".into())
+            .to_string()
+            .contains("dup"));
+        assert!(StorageError::Internal("boom".into())
+            .to_string()
+            .contains("boom"));
     }
 }
