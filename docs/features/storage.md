@@ -7,16 +7,16 @@ Define the storage trait hierarchy that abstracts all persistence operations, th
 The storage design doc ([storage.md](../design/storage.md)) specifies a pluggable backend architecture with traits for `UserStore`, `MessageStore`, `ChannelStore`, `MediaStore`, and `SessionStore`. SQLite + local disk is the default backend requiring zero external dependencies. The architecture doc ([architecture.md](../design/architecture.md)) notes that session tokens may be kept in-memory rather than in the primary database. The server-config feature provides the `StorageConfig` struct that selects which backend to initialize.
 
 ## Requirements
-- [ ] Storage trait hierarchy defined in the `shared` crate (or a dedicated `storage` module in `server`) with async methods
-- [ ] Traits: `UserStore`, `MessageStore`, `ChannelStore`, `SessionStore`
-- [ ] `MediaStore` trait is defined but the implementation is deferred to the file-uploads feature
-- [ ] SQLite backend implements all four active traits using sqlx
-- [ ] Database schema is managed via sqlx migrations
-- [ ] SQLite database file is created automatically on first run at the path specified in config
-- [ ] WAL mode is enabled for SQLite for better concurrent read performance
-- [ ] Session tokens are stored in SQLite for simplicity (in-memory caching is a future optimization)
-- [ ] The storage layer is injected into the axum app state as a trait object (or generic) so handlers are backend-agnostic
-- [ ] All store methods return `Result<T, StorageError>` with a unified error type
+- [x] Storage trait hierarchy defined in the `shared` crate (or a dedicated `storage` module in `server`) with async methods
+- [x] Traits: `UserStore`, `MessageStore`, `ChannelStore`, `SessionStore`
+- [x] `MediaStore` trait is defined but the implementation is deferred to the file-uploads feature
+- [x] SQLite backend implements all four active traits using sqlx
+- [x] Database schema is managed via sqlx migrations
+- [x] SQLite database file is created automatically on first run at the path specified in config
+- [x] WAL mode is enabled for SQLite for better concurrent read performance
+- [x] Session tokens are stored in SQLite for simplicity (in-memory caching is a future optimization)
+- [x] The storage layer is injected into the axum app state as a trait object (or generic) so handlers are backend-agnostic
+- [x] All store methods return `Result<T, StorageError>` with a unified error type
 
 ## Design
 
@@ -143,32 +143,32 @@ pub trait SessionStore: Send + Sync {
 ```
 
 ## Task List
-- [ ] Add `sqlx` (with `sqlite` and `runtime-tokio` features), `async-trait`, and `ulid` (or `uuid`) to `server/Cargo.toml`
-- [ ] Create `server/src/storage/mod.rs` with `StorageError` enum and a composite `Storage` trait (or struct wrapping all sub-traits)
-- [ ] Define model structs in `server/src/storage/models.rs`: `User`, `Message`, `Channel`, `Category`, `Session`
-- [ ] Define `UserStore`, `MessageStore`, `ChannelStore`, `SessionStore`, and `MediaStore` traits in `server/src/storage/traits.rs`
-- [ ] Create `server/migrations/001_initial.sql` with the schema
-- [ ] Implement `SqliteStorage` struct in `server/src/storage/sqlite/mod.rs` with pool initialization and migration running
-- [ ] Enable WAL mode on the SQLite connection pool
-- [ ] Implement `UserStore` for `SqliteStorage` in `server/src/storage/sqlite/users.rs`
-- [ ] Implement `ChannelStore` for `SqliteStorage` in `server/src/storage/sqlite/channels.rs`
-- [ ] Implement `MessageStore` for `SqliteStorage` in `server/src/storage/sqlite/messages.rs` with cursor-based pagination
-- [ ] Implement `SessionStore` for `SqliteStorage` in `server/src/storage/sqlite/sessions.rs`
-- [ ] Wire up storage initialization in `server/src/main.rs`: read config, create `SqliteStorage`, inject into axum state
-- [ ] Add a session expiry cleanup task (tokio background task that calls `delete_expired_sessions` periodically)
+- [x] Add `sqlx` (with `sqlite` and `runtime-tokio` features), `async-trait`, and `ulid` (or `uuid`) to `server/Cargo.toml`
+- [x] Create `server/src/storage/mod.rs` with `StorageError` enum and a composite `Storage` trait (or struct wrapping all sub-traits)
+- [x] Define model structs in `server/src/storage/models.rs`: `User`, `Message`, `Channel`, `Category`, `Session`
+- [x] Define `UserStore`, `MessageStore`, `ChannelStore`, `SessionStore`, and `MediaStore` traits in `server/src/storage/traits.rs`
+- [x] Create `server/migrations/001_initial.sql` with the schema
+- [x] Implement `SqliteStorage` struct in `server/src/storage/sqlite/mod.rs` with pool initialization and migration running
+- [x] Enable WAL mode on the SQLite connection pool
+- [x] Implement `UserStore` for `SqliteStorage` in `server/src/storage/sqlite/users.rs`
+- [x] Implement `ChannelStore` for `SqliteStorage` in `server/src/storage/sqlite/channels.rs`
+- [x] Implement `MessageStore` for `SqliteStorage` in `server/src/storage/sqlite/messages.rs` with cursor-based pagination
+- [x] Implement `SessionStore` for `SqliteStorage` in `server/src/storage/sqlite/sessions.rs`
+- [x] Wire up storage initialization in `server/src/main.rs`: read config, create `SqliteStorage`, inject into axum state
+- [x] Add a session expiry cleanup task (tokio background task that calls `delete_expired_sessions` periodically)
 
 ## Test List
-- [ ] Unit test: `SqliteStorage` initializes with an in-memory database and runs migrations successfully
-- [ ] Unit test: `UserStore` — create user, get by id, get by pubkey, update, list
-- [ ] Unit test: `UserStore` — duplicate pubkey returns appropriate error
-- [ ] Unit test: `ChannelStore` — create, get, list, update, delete
-- [ ] Unit test: `MessageStore` — create message, get by id, list by channel with ordering
-- [ ] Unit test: `MessageStore` — cursor-based pagination returns correct pages
-- [ ] Unit test: `MessageStore` — soft delete sets `deleted` flag, message no longer appears in list
-- [ ] Unit test: `SessionStore` — create session, retrieve by token, verify expiry time
-- [ ] Unit test: `SessionStore` — `delete_expired_sessions` removes only expired sessions
-- [ ] Unit test: `StorageError` variants cover not-found, conflict, and internal error cases
-- [ ] Integration test: server starts, initializes SQLite storage, `/health` still responds
+- [x] Unit test: `SqliteStorage` initializes with an in-memory database and runs migrations successfully
+- [x] Unit test: `UserStore` — create user, get by id, get by pubkey, update, list
+- [x] Unit test: `UserStore` — duplicate pubkey returns appropriate error
+- [x] Unit test: `ChannelStore` — create, get, list, update, delete
+- [x] Unit test: `MessageStore` — create message, get by id, list by channel with ordering
+- [x] Unit test: `MessageStore` — cursor-based pagination returns correct pages
+- [x] Unit test: `MessageStore` — soft delete sets `deleted` flag, message no longer appears in list
+- [x] Unit test: `SessionStore` — create session, retrieve by token, verify expiry time
+- [x] Unit test: `SessionStore` — `delete_expired_sessions` removes only expired sessions
+- [x] Unit test: `StorageError` variants cover not-found, conflict, and internal error cases
+- [x] Integration test: server starts, initializes SQLite storage, `/health` still responds
 
 ## Implementation Notes
 

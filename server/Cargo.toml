@@ -14,6 +14,10 @@ toml = "0.8"
 clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono", "migrate"] }
+async-trait = "0.1"
+ulid = "1"
+chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

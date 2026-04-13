@@ -1,14 +1,17 @@
 mod config;
+mod storage;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::{extract::State, routing::get, Json, Router};
 use clap::Parser;
 use shared::HealthStatus;
-use tracing::info;
+use tracing::{info, warn};
 
-use crate::config::ServerConfig;
+use crate::config::{ServerConfig, StorageBackendType};
+use crate::storage::{SessionStore, SqliteStorage};
 
 #[derive(Parser, Debug)]
 #[command(name = "decentcom-server", version, about = "decentcom server")]
@@ -18,14 +21,51 @@ struct Cli {
     config: PathBuf,
 }
 
-pub type AppState = Arc<ServerConfig>;
-
-pub fn app(state: AppState) -> Router {
-    Router::new().route("/health", get(health)).with_state(state)
+#[derive(Clone)]
+pub struct AppState {
+    pub config: Arc<ServerConfig>,
+    pub storage: Arc<SqliteStorage>,
 }
 
-async fn health(State(_cfg): State<AppState>) -> Json<HealthStatus> {
+pub fn app(state: AppState) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .with_state(state)
+}
+
+async fn health(State(_state): State<AppState>) -> Json<HealthStatus> {
     Json(HealthStatus::ok())
+}
+
+async fn init_storage(config: &ServerConfig) -> Result<SqliteStorage, Box<dyn std::error::Error>> {
+    match config.storage.backend {
+        StorageBackendType::Sqlite => {
+            let path = config
+                .storage
+                .database_path
+                .as_ref()
+                .ok_or("storage.database_path is required for sqlite")?;
+            Ok(SqliteStorage::open(path).await?)
+        }
+        StorageBackendType::Postgres => {
+            Err("postgres backend is not yet implemented".into())
+        }
+    }
+}
+
+fn spawn_session_cleanup(storage: Arc<SqliteStorage>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(300));
+        interval.tick().await; // skip immediate first tick
+        loop {
+            interval.tick().await;
+            match storage.delete_expired_sessions().await {
+                Ok(n) if n > 0 => info!(removed = n, "expired sessions cleaned up"),
+                Ok(_) => {}
+                Err(e) => warn!(error = %e, "session cleanup failed"),
+            }
+        }
+    });
 }
 
 #[tokio::main]
@@ -41,8 +81,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = ServerConfig::load_or_default(&cli.config)?;
     info!(config = %config.summary(), "loaded configuration");
 
+    let storage = Arc::new(init_storage(&config).await?);
+    spawn_session_cleanup(storage.clone());
+
     let bind = config.network.bind_address;
-    let state: AppState = Arc::new(config);
+    let state = AppState {
+        config: Arc::new(config),
+        storage,
+    };
     let listener = tokio::net::TcpListener::bind(bind).await?;
     info!(%bind, "listening");
     axum::serve(listener, app(state)).await?;
@@ -57,13 +103,17 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    fn test_state() -> AppState {
-        Arc::new(ServerConfig::default())
+    async fn test_state() -> AppState {
+        let storage = Arc::new(SqliteStorage::in_memory().await.unwrap());
+        AppState {
+            config: Arc::new(ServerConfig::default()),
+            storage,
+        }
     }
 
     #[tokio::test]
     async fn health_endpoint_returns_ok() {
-        let response = app(test_state())
+        let response = app(test_state().await)
             .oneshot(
                 Request::builder()
                     .uri("/health")
@@ -87,7 +137,10 @@ mod tests {
             bind_address = "127.0.0.1:0"
         "#;
         let cfg = ServerConfig::from_toml_str(toml).unwrap();
-        let state: AppState = Arc::new(cfg);
+        let state = AppState {
+            config: Arc::new(cfg),
+            storage: Arc::new(SqliteStorage::in_memory().await.unwrap()),
+        };
         let response = app(state)
             .oneshot(
                 Request::builder()
@@ -98,5 +151,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn storage_error_variants_display() {
+        use crate::storage::StorageError;
+        assert!(StorageError::NotFound.to_string().contains("not found"));
+        assert!(
+            StorageError::Conflict("dup".into())
+                .to_string()
+                .contains("dup")
+        );
+        assert!(
+            StorageError::Internal("boom".into())
+                .to_string()
+                .contains("boom")
+        );
     }
 }
