@@ -8,8 +8,8 @@ Use `/feature <name>` to create a feature document, then `/implement <name>` to 
 
 The minimum to have a working server and client that can exchange messages.
 
-| # | Feature | Name | Description |
-|---|---|---|---|
+| # | Feature | Name | Description | Status |
+|---|---|---|---|---|
 | 1 | Project Scaffolding | `scaffolding` | Cargo workspace for server, Tauri v2 + React + TypeScript client, shared types crate, build tooling | ✅ |
 | 2 | Server Configuration | `server-config` | TOML config file loading, server identity, feature flags, bind address, storage backend selection | ✅ |
 | 3 | Storage Layer | `storage` | Storage trait hierarchy (UserStore, MessageStore, ChannelStore, SessionStore), SQLite backend implementation | ✅ |
@@ -26,8 +26,8 @@ The minimum to have a working server and client that can exchange messages.
 
 The features that make it feel like a real communication platform.
 
-| # | Feature | Name | Description |
-|---|---|---|---|
+| # | Feature | Name | Description | Status |
+|---|---|---|---|---|
 | 11 | Roles & Permissions | `roles` | Role CRUD, ordered role hierarchy, permission flags (send messages, manage channels, kick, ban, etc.), channel-level permission overrides, @everyone and @admin built-in roles |
 | 12 | Invites | `invites` | Generate invite links (single/multi-use, time-limited, role-granting), join via invite link, invite management API |
 | 13 | Membership Management | `membership` | Membership modes (open, invite_only, allowlist, closed), kick, ban (by pubkey), unban, member list with roles |
@@ -44,8 +44,8 @@ The features that make it feel like a real communication platform.
 
 Real-time audio/video communication.
 
-| # | Feature | Name | Description |
-|---|---|---|---|
+| # | Feature | Name | Description | Status |
+|---|---|---|---|---|
 | 22 | Voice Channels | `voice` | WebRTC SFU integration, voice channel join/leave, audio streaming, mute/deafen, participant list | ✅ server (SFU/media deferred) |
 | 23 | Video Chat | `video` | Camera stream alongside voice, video toggle, participant video grid | ✅ server (SFU/media deferred) |
 | 24 | Screen Sharing | `screen-share` | Screen/window share stream, presenter mode, screen share as an additional stream in voice channels | ✅ server (SFU/media deferred) |
@@ -54,8 +54,8 @@ Real-time audio/video communication.
 
 Features for production deployment and scale.
 
-| # | Feature | Name | Description |
-|---|---|---|---|
+| # | Feature | Name | Description | Status |
+|---|---|---|---|---|
 | 25 | PostgreSQL Backend | `postgres` | PostgreSQL storage backend implementation, S3-compatible media storage, migration tooling between SQLite and PostgreSQL |
 | 26 | Key Recovery | `key-recovery` | Encrypted key backup (passphrase-protected export to file/cloud), key import on new device |
 | 27 | Key Rotation | `key-rotation` | Rotation declaration signed by old key, server-side identity migration, revocation list |
