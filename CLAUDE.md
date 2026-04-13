@@ -49,3 +49,33 @@ Before making significant architectural decisions, check `docs/design/` — seve
 - `docs/design/identity.md` — key generation, device sub-keys, recovery options
 - `docs/design/server-model.md` — membership modes, feature flags, permissions
 - `docs/design/storage.md` — backend options, media storage, retention
+
+## Implementation Order
+
+Features should be implemented in milestone order as defined in `docs/design/overview.md`:
+
+1. **Foundation** — server binary scaffolding, Tauri client shell, pubkey auth (challenge-response), basic text channels
+2. **Core UX** — DMs, roles, permissions, server settings, invite system
+3. **Voice & Video** — WebRTC voice channels, video, screen share (resolve SFU strategy first — see `docs/design/architecture.md` open questions)
+4. **Federation** — cross-server identity, inter-server messaging
+5. **Managed Hosting** — one-click deploy, billing, support tooling
+
+Before starting any feature, check the relevant design doc for open questions that must be resolved first. Do not implement features that depend on unresolved architectural decisions without first documenting the decision in the design doc.
+
+## Implementing Features
+
+Follow this process for each feature:
+
+1. **Read the design doc** for that milestone area before writing any code. Identify and resolve open questions.
+2. **Start with the shared types** (`shared/` crate) — define the data model and wire protocol types that both server and client will use.
+3. **Implement the server side** — REST endpoints in `server/`, WebSocket events, storage trait methods.
+4. **Implement the Tauri core** — any privileged operations (signing, key access, file I/O) in the Tauri Rust core.
+5. **Implement the React UI** — connect to the Tauri IPC and server WebSocket/REST APIs.
+6. **Write tests** at each layer before moving to the next. Run `cargo clippy -- -D warnings` and `pnpm lint` before considering a feature complete.
+
+### Skills Available
+
+The following Claude Code skills are available and should be used where appropriate:
+
+- **`/feature`** — create a feature document.
+- **`/implement`** — implement a feature.
