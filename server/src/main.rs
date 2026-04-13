@@ -1,4 +1,5 @@
 mod auth;
+mod channels;
 mod config;
 mod gateway;
 mod storage;
@@ -34,6 +35,7 @@ pub struct AppState {
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
+        .nest("/api/v1", channels::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .with_state(state)
@@ -87,6 +89,16 @@ fn spawn_challenge_cleanup(challenge_store: auth::challenge::SharedChallengeStor
     });
 }
 
+/// Seed initial data if the server is freshly initialized (no channels exist).
+async fn seed_channels(storage: &DynStorage) -> Result<(), Box<dyn std::error::Error>> {
+    let channels = storage.list_channels().await?;
+    if channels.is_empty() {
+        storage.create_channel("general", None, 0).await?;
+        info!("seeded default 'general' channel");
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
@@ -101,6 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!(config = %config.summary(), "loaded configuration");
 
     let storage = init_storage(&config).await?;
+    seed_channels(&storage).await?;
     let challenge_store = auth::challenge_store();
     spawn_session_cleanup(storage.clone());
     spawn_challenge_cleanup(challenge_store.clone());
