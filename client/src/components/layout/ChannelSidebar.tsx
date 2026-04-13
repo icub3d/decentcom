@@ -19,9 +19,9 @@ export function ChannelSidebar({
   const uncategorized = channels.filter((ch) => !ch.category_id);
 
   return (
-    <aside className="w-72 border-r border-slate-800 bg-slate-900/80 p-4 overflow-auto">
+    <aside className="w-72 border-r border-ctp-overlay0 bg-ctp-mantle/80 p-4 overflow-auto">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Channels</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-ctp-subtext0">Channels</h2>
         <StatusIndicator status={status} />
       </div>
 
@@ -31,7 +31,7 @@ export function ChannelSidebar({
           if (!grouped.length) return null;
           return (
             <section key={category.id} className="space-y-1">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ctp-overlay1">
                 {category.name}
               </h3>
               {grouped.map((channel) => (
@@ -40,8 +40,8 @@ export function ChannelSidebar({
                   onClick={() => onSelectChannel(channel.id)}
                   className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
                     currentChannelId === channel.id
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-slate-300 hover:bg-slate-800"
+                      ? "bg-ctp-blue/20 text-ctp-blue"
+                      : "text-ctp-subtext1 hover:bg-ctp-surface0"
                   }`}
                 >
                   #{channel.name}
@@ -53,15 +53,15 @@ export function ChannelSidebar({
 
         {!!uncategorized.length && (
           <section className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">General</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ctp-overlay1">General</h3>
             {uncategorized.map((channel) => (
               <button
                 key={channel.id}
                 onClick={() => onSelectChannel(channel.id)}
                 className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
                   currentChannelId === channel.id
-                    ? "bg-blue-500/20 text-blue-300"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-ctp-blue/20 text-ctp-blue"
+                    : "text-ctp-subtext1 hover:bg-ctp-surface0"
                 }`}
               >
                 #{channel.name}

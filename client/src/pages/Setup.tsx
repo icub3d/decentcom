@@ -53,27 +53,27 @@ export function Setup({ onGenerate, onImport, onComplete }: SetupProps) {
 
   if (view === "import") {
     return (
-      <div className="max-w-xl mx-auto p-8 space-y-6 bg-slate-800 rounded-xl shadow-xl border border-slate-700">
-        <h2 className="text-2xl font-bold text-slate-100">Import Identity</h2>
-        <p className="text-slate-300">Enter your 24-word recovery phrase to restore your identity.</p>
+      <div className="max-w-xl mx-auto p-8 space-y-6 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
+        <h2 className="text-2xl font-bold text-ctp-text">Import Identity</h2>
+        <p className="text-ctp-subtext1">Enter your 24-word recovery phrase to restore your identity.</p>
         <textarea
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           placeholder="Enter 24 words separated by spaces..."
-          className="w-full h-40 p-4 bg-slate-900 rounded-lg border border-slate-700 text-slate-100 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full h-40 p-4 bg-ctp-base rounded-lg border border-ctp-overlay0 text-ctp-text font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ctp-blue"
         />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && <p className="text-ctp-red text-sm">{error}</p>}
         <div className="flex gap-4">
           <button
             onClick={() => setView("choice")}
-            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-semibold transition-colors cursor-pointer"
+            className="flex-1 py-3 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-lg font-semibold transition-colors cursor-pointer"
           >
             Back
           </button>
           <button
             onClick={handleImport}
             disabled={loading}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-lg font-semibold transition-colors shadow-lg cursor-pointer"
+            className="flex-1 py-3 bg-ctp-blue hover:bg-ctp-sapphire disabled:bg-ctp-overlay0 text-ctp-crust rounded-lg font-semibold transition-colors shadow-lg cursor-pointer"
           >
             {loading ? "Importing..." : "Restore Identity"}
           </button>
@@ -83,27 +83,27 @@ export function Setup({ onGenerate, onImport, onComplete }: SetupProps) {
   }
 
   return (
-    <div className="max-w-md mx-auto p-8 space-y-8 bg-slate-800 rounded-xl shadow-xl border border-slate-700">
+    <div className="max-w-md mx-auto p-8 space-y-8 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-slate-100">Welcome</h1>
-        <p className="text-slate-400">Set up your decentcom identity to get started.</p>
+        <h1 className="text-3xl font-bold text-ctp-text">Welcome</h1>
+        <p className="text-ctp-subtext0">Set up your decentcom identity to get started.</p>
       </div>
       <div className="space-y-4">
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl font-bold text-lg transition-all shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer"
+          className="w-full py-4 bg-ctp-blue hover:bg-ctp-sapphire disabled:bg-ctp-overlay0 text-ctp-crust rounded-xl font-bold text-lg transition-all shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
           {loading ? "Generating..." : "Create New Identity"}
         </button>
         <button
           onClick={() => setView("import")}
-          className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-xl font-bold text-lg transition-all border border-slate-600 hover:scale-[1.02] active:scale-95 cursor-pointer"
+          className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
           Import Existing
         </button>
       </div>
-      {error && <p className="text-red-400 text-center text-sm">{error}</p>}
+      {error && <p className="text-ctp-red text-center text-sm">{error}</p>}
     </div>
   );
 }

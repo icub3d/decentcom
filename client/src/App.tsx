@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ServerConnect } from "./components/connection/ServerConnect";
 import { AppShell } from "./components/layout/AppShell";
@@ -17,10 +17,14 @@ function App() {
     importIdentity,
     refresh,
   } = useIdentity();
-  const { currentServerId, addServer } = useAppStore();
+  const { currentServerId, addServer, initTheme } = useAppStore();
   const { connect, status } = useServerStore();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
 
   async function handleConnect(address: string) {
     setConnectLoading(true);
@@ -37,7 +41,7 @@ function App() {
 
   if (loading && hasIdentity === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-ctp-base text-ctp-text">
         <div className="animate-pulse">Loading identity...</div>
       </div>
     );
@@ -45,11 +49,11 @@ function App() {
 
   if (!hasIdentity) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-        <Setup 
-          onGenerate={generateIdentity} 
-          onImport={importIdentity} 
-          onComplete={refresh} 
+      <main className="min-h-screen flex items-center justify-center bg-ctp-base p-4 text-ctp-text">
+        <Setup
+          onGenerate={generateIdentity}
+          onImport={importIdentity}
+          onComplete={refresh}
         />
       </main>
     );
@@ -68,7 +72,7 @@ function App() {
   return (
     <>
       {error && (
-        <div className="fixed right-4 top-4 z-20 rounded-lg border border-rose-700 bg-rose-900/40 px-4 py-2 text-sm text-rose-300">
+        <div className="fixed right-4 top-4 z-20 rounded-lg border border-ctp-red bg-ctp-red/20 px-4 py-2 text-sm text-ctp-red">
           {error}
         </div>
       )}

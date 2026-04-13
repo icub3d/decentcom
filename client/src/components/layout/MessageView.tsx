@@ -21,16 +21,16 @@ export function MessageView({
 }: MessageViewProps) {
   if (!channel) {
     return (
-      <section className="flex-1 flex items-center justify-center bg-slate-900 text-slate-500">
+      <section className="flex-1 flex items-center justify-center bg-ctp-base text-ctp-subtext0">
         Select a channel to begin chatting.
       </section>
     );
   }
 
   return (
-    <section className="flex h-full flex-1 flex-col bg-slate-900">
-      <header className="border-b border-slate-800 px-5 py-4">
-        <h2 className="text-lg font-bold text-slate-100">#{channel.name}</h2>
+    <section className="flex h-full flex-1 flex-col bg-ctp-base">
+      <header className="border-b border-ctp-overlay0 px-5 py-4">
+        <h2 className="text-lg font-bold text-ctp-text">#{channel.name}</h2>
       </header>
       <div className="flex-1 min-h-0">
         <MessageList messages={messages} hasMore={hasMore} onLoadMore={onLoadMore} />

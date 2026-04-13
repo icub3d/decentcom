@@ -5,9 +5,9 @@ interface StatusIndicatorProps {
 }
 
 const STATUS_STYLES: Record<Status, string> = {
-  connected: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-  connecting: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  disconnected: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+  connected: "bg-ctp-green/20 text-ctp-green border-ctp-green/40",
+  connecting: "bg-ctp-yellow/20 text-ctp-yellow border-ctp-yellow/40",
+  disconnected: "bg-ctp-red/20 text-ctp-red border-ctp-red/40",
 };
 
 export function StatusIndicator({ status }: StatusIndicatorProps) {

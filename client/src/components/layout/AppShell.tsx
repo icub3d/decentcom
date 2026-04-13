@@ -26,7 +26,7 @@ export function AppShell() {
   const channelHasMore = currentChannelId ? hasMore[currentChannelId] ?? false : false;
 
   return (
-    <main className="h-screen bg-slate-950 text-slate-100 flex">
+    <main className="h-screen bg-ctp-crust text-ctp-text flex">
       <ServerSidebar
         servers={serverList}
         currentServerId={currentServerId}

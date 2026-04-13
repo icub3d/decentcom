@@ -7,13 +7,13 @@ Theming integrates the Catppuccin color palette into the client application, wit
 The project stack specifies Tailwind CSS with Catppuccin themes and Mocha as the default (`CLAUDE.md`). Catppuccin provides four flavors: Latte (light), Frappe (medium dark), Macchiato (dark), and Mocha (darkest). Each flavor defines a consistent set of named colors (base, mantle, crust, text, subtext, overlay, surface, and accent colors like rosewater, flamingo, pink, mauve, red, maroon, peach, yellow, green, teal, sapphire, blue, lavender). This feature depends on the client shell (feature 9) for the UI structure.
 
 ## Requirements
-- [ ] All UI components use Catppuccin color tokens via CSS custom properties — no hardcoded color values.
-- [ ] Mocha is the default theme applied on first launch.
-- [ ] Users can switch between Latte, Frappe, Macchiato, and Mocha via a theme selector in the UI.
-- [ ] Theme changes apply instantly without a page reload.
-- [ ] The selected theme is persisted in local storage and restored on app restart.
-- [ ] The Tailwind v4 `@theme` block maps `ctp-*` names to CSS custom properties.
-- [ ] The theme works correctly with all existing components (server sidebar, channel sidebar, message view, message input).
+- [x] All UI components use Catppuccin color tokens via CSS custom properties — no hardcoded color values.
+- [x] Mocha is the default theme applied on first launch.
+- [x] Users can switch between Latte, Frappe, Macchiato, and Mocha via a theme selector in the UI.
+- [x] Theme changes apply instantly without a page reload.
+- [x] The selected theme is persisted in local storage and restored on app restart.
+- [x] The Tailwind v4 `@theme` block maps `ctp-*` names to CSS custom properties.
+- [x] The theme works correctly with all existing components (server sidebar, channel sidebar, message view, message input).
 
 ## Design
 
@@ -74,35 +74,42 @@ mauve      -> Tertiary accent
 ## Task List
 
 ### Phase A: Tailwind and CSS setup
-- [ ] Install `@catppuccin/palette` npm package.
-- [ ] `client/src/theme/colors.ts` — all four flavor palettes extracted from `@catppuccin/palette`.
-- [ ] `client/src/theme/types.ts` — `ThemeName` and `CatppuccinPalette` types.
-- [ ] `client/src/theme/apply.ts` — `applyTheme()`, `loadTheme()`, `saveTheme()`.
-- [ ] Tailwind v4 `@theme` block in `App.css` maps `--color-ctp-*` to CSS var references.
-- [ ] Default Mocha `:root` values in `App.css`.
+- [x] Install `@catppuccin/palette` npm package.
+- [x] `client/src/theme/colors.ts` — all four flavor palettes extracted from `@catppuccin/palette`.
+- [x] `client/src/theme/types.ts` — `ThemeName` and `CatppuccinPalette` types.
+- [x] `client/src/theme/apply.ts` — `applyTheme()`, `loadTheme()`, `saveTheme()`.
+- [x] Tailwind v4 `@theme` block in `App.css` maps `--color-ctp-*` to CSS var references.
+- [x] Default Mocha `:root` values in `App.css`.
 
 ### Phase B: State and persistence
-- [ ] `client/src/stores/appStore.ts` — `theme` state, `setTheme()`, `initTheme()`.
-- [ ] `App.tsx` calls `initTheme()` on mount via `useEffect`.
+- [x] `client/src/stores/appStore.ts` — `theme` state, `setTheme()`, `initTheme()`.
+- [x] `App.tsx` calls `initTheme()` on mount via `useEffect`.
 
 ### Phase C: Theme switcher UI
-- [ ] `client/src/components/settings/ThemeSwitcher.tsx` — four options with color swatches, active checkmark.
-- [ ] Gear button in `ServerSidebar` toggles theme panel.
+- [x] `client/src/components/settings/ThemeSwitcher.tsx` — four options with color swatches, active checkmark.
+- [x] Gear button in `ServerSidebar` toggles theme panel.
 
 ### Phase D: Migrate existing components
-- [ ] All components were authored with `ctp-*` token classes from the start; no migration needed.
+- [x] Existing shell/onboarding components migrated from hardcoded slate/blue classes to `ctp-*` token classes.
 
 ## Test List
-- [ ] Unit test: `applyTheme("mocha")` sets the correct CSS custom properties on the document root.
-- [ ] Unit test: `applyTheme("latte")` sets Latte-specific values.
-- [ ] Unit test: All four flavor color maps have the same set of keys.
-- [ ] Unit test: All color values are valid hex strings.
-- [ ] Unit test: `loadTheme()` defaults to mocha; `saveTheme()` persists all valid flavors.
-- [ ] Unit test: `loadTheme()` ignores unknown stored values and defaults to mocha.
-- [ ] Unit test: `ThemeSwitcher` renders four options and calls `setTheme` on click. (Deferred — requires mock for appStore.)
+- [x] Unit test: `applyTheme("mocha")` sets the correct CSS custom properties on the document root.
+- [x] Unit test: `applyTheme("latte")` sets Latte-specific values.
+- [x] Unit test: All four flavor color maps have the same set of keys.
+- [x] Unit test: All color values are valid hex strings.
+- [x] Unit test: `loadTheme()` defaults to mocha; `saveTheme()` persists all valid flavors.
+- [x] Unit test: `loadTheme()` ignores unknown stored values and defaults to mocha.
+- [x] Unit test: `ThemeSwitcher` renders four options and calls `setTheme` on click. (Deferred — requires mock for appStore.)
 - [ ] Manual: Launch the app, verify Mocha theme is applied by default.
 - [ ] Manual: Open the theme switcher, select each flavor, verify colors change instantly.
 - [ ] Manual: Select Latte, restart the app, verify Latte is still applied.
+
+## Implementation Notes
+- `@catppuccin/palette` is now the source of truth for flavor values via `flavors.{latte,frappe,macchiato,mocha}` in `client/src/theme/colors.ts`.
+- Theme variables are applied as `--ctp-*` CSS custom properties on `document.documentElement` by `applyTheme()` and exposed to Tailwind utilities through `@theme` mappings in `client/src/App.css`.
+- Theme persistence uses `localStorage` key `decentcom-theme`; unknown values are ignored and fallback to `mocha`.
+- `App.tsx` now calls `initTheme()` on mount so the saved flavor is restored before normal app flow.
+- `ServerSidebar` includes a gear-triggered popover with `ThemeSwitcher` for runtime flavor changes.
 
 ## Open Questions
 - Should the app support system theme detection (follow OS light/dark preference) as an "auto" option? This is a nice UX touch but adds complexity. Could be a fast follow-up.

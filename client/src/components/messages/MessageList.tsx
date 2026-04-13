@@ -54,10 +54,10 @@ export function MessageList({ messages, hasMore, onLoadMore }: MessageListProps)
       className="h-full overflow-y-auto px-4 py-3 space-y-3"
     >
       {hasMore && (
-        <div className="text-center text-xs text-slate-500">Scroll up to load older messages</div>
+        <div className="text-center text-xs text-ctp-subtext0">Scroll up to load older messages</div>
       )}
       {ordered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
+        <div className="rounded-lg border border-dashed border-ctp-overlay0 p-6 text-center text-ctp-subtext0">
           No messages yet.
         </div>
       ) : (
