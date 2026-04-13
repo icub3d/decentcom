@@ -11,6 +11,9 @@ pub enum Op {
     ChannelCreate,
     ChannelUpdate,
     ChannelDelete,
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryDelete,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

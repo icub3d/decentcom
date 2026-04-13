@@ -1,5 +1,5 @@
 mod connection;
-mod events;
+pub(crate) mod events;
 mod handler;
 mod registry;
 
