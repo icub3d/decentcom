@@ -10,14 +10,15 @@ The minimum to have a working server and client that can exchange messages.
 
 | # | Feature | Name | Description |
 |---|---|---|---|
-| 1 | Project Scaffolding | `scaffolding` | Cargo workspace for server, Tauri v2 + React + TypeScript client, shared types crate, build tooling |
-| 2 | Server Configuration | `server-config` | TOML config file loading, server identity, feature flags, bind address, storage backend selection |
-| 3 | Storage Layer | `storage` | Storage trait hierarchy (UserStore, MessageStore, ChannelStore, SessionStore), SQLite backend implementation |
-| 4 | Identity & Key Generation | `identity` | Ed25519 master key pair generation, seed phrase (BIP39), secure key storage via Tauri (OS keychain), public key display format |
-| 5 | Authentication | `auth` | Challenge-response protocol (POST /auth/challenge, POST /auth/verify), session token issuance and validation, server-side user registration on first auth |
-| 6 | WebSocket Gateway | `gateway` | Persistent WSS connection, event envelope format, subscribe/unsubscribe to channels, session auth on connect, heartbeat/keepalive |
-| 7 | Channels | `channels` | Create/list/edit/delete text channels and categories, channel ordering, REST API endpoints, real-time channel events via gateway |
-| 8 | Messages | `messages` | Send/receive/edit/delete messages in channels, message history with cursor-based pagination, real-time delivery via gateway |
+| 1 | Project Scaffolding | `scaffolding` | Cargo workspace for server, Tauri v2 + React + TypeScript client, shared types crate, build tooling | ✅ |
+| 2 | Server Configuration | `server-config` | TOML config file loading, server identity, feature flags, bind address, storage backend selection | ✅ |
+| 3 | Storage Layer | `storage` | Storage trait hierarchy (UserStore, MessageStore, ChannelStore, SessionStore), SQLite backend implementation | ✅ |
+| 4 | Identity & Key Generation | `identity` | Ed25519 master key pair generation, seed phrase (BIP39), secure key storage via Tauri (OS keychain), public key display format | ✅ |
+| 5 | Authentication | `auth` | Challenge-response protocol (POST /auth/challenge, POST /auth/verify), session token issuance and validation, server-side user registration on first auth | ✅ |
+| 6 | WebSocket Gateway | `gateway` | Persistent WSS connection, event envelope format, subscribe/unsubscribe to channels, session auth on connect, heartbeat/keepalive | ✅ |
+| 7 | Channels | `channels` | Create/list/edit/delete text channels and categories, channel ordering, REST API endpoints, real-time channel events via gateway | ✅ |
+| 8 | Messages | `messages` | Send/receive/edit/delete messages in channels, message history with cursor-based pagination, real-time delivery via gateway | ✅ |
+
 | 9 | Client Shell | `client-shell` | React app layout: server sidebar, channel list, message view, message input. Zustand state management. Connect to one server, authenticate, send and receive messages |
 | 10 | Theming | `theming` | Catppuccin theme integration (Mocha default), theme switcher (Latte, Frappe, Macchiato, Mocha), user preference persistence, Tailwind CSS config |
 
