@@ -29,13 +29,15 @@ impl MessageStore for SqliteStorage {
         content: &str,
     ) -> Result<Message, StorageError> {
         let id = self.new_id();
-        sqlx::query("INSERT INTO messages (id, channel_id, author_id, content) VALUES (?, ?, ?, ?)")
-            .bind(&id)
-            .bind(channel_id)
-            .bind(author_id)
-            .bind(content)
-            .execute(self.pool())
-            .await?;
+        sqlx::query(
+            "INSERT INTO messages (id, channel_id, author_id, content) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(channel_id)
+        .bind(author_id)
+        .bind(content)
+        .execute(self.pool())
+        .await?;
         self.get_message(&id).await?.ok_or(StorageError::NotFound)
     }
 
@@ -108,9 +110,9 @@ impl MessageStore for SqliteStorage {
                  content = ''
              WHERE id = ?",
         )
-            .bind(id)
-            .execute(self.pool())
-            .await?;
+        .bind(id)
+        .execute(self.pool())
+        .await?;
         if result.rows_affected() == 0 {
             return Err(StorageError::NotFound);
         }
