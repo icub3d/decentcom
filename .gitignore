@@ -1,0 +1,8 @@
+/target/
+client/node_modules/
+client/dist/
+*.db
+*.db-shm
+*.db-wal
+decentcom.toml
+server/media
