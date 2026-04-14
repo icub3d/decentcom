@@ -50,7 +50,8 @@ export interface GatewayEvent {
     | Category
     | Role
     | { id: string; channel_id?: string }
-    | { user_id: string; role_id: string };
+    | { user_id: string; role_id: string }
+    | { user_id: string; pubkey: string; roles: string[]; joined_at: string };
   t: number;
 }
 
@@ -355,6 +356,17 @@ export const useServerStore = create<ServerStore>((set, get) => ({
             memberRoleIdsByUserId: {
               ...state.memberRoleIdsByUserId,
               [payload.user_id]: existing.filter((roleId) => roleId !== payload.role_id),
+            },
+          };
+        }
+        case "MEMBER_JOIN": {
+          const member = event.d as { user_id: string; pubkey: string; roles: string[]; joined_at: string };
+          const existing = state.memberRoleIdsByUserId[member.user_id] ?? [];
+          const merged = Array.from(new Set([...existing, ...member.roles]));
+          return {
+            memberRoleIdsByUserId: {
+              ...state.memberRoleIdsByUserId,
+              [member.user_id]: merged,
             },
           };
         }

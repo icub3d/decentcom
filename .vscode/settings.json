@@ -4,6 +4,7 @@
         "cargo clippy": true,
         "command": true,
         "keyctl": true,
-        "secret-tool": true
+        "secret-tool": true,
+        "cargo check": true
     }
 }

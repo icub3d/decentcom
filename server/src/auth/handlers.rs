@@ -78,6 +78,7 @@ pub(super) async fn verify(
     };
 
     if created_user {
+        let _ = state.storage.add_member_role(&user.id, "everyone").await;
         let users = state.storage.list_users().await.map_err(internal)?;
         if users.len() == 1 {
             let _ = state.storage.add_member_role(&user.id, "admin").await;

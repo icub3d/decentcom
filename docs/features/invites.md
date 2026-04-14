@@ -116,43 +116,46 @@ CREATE TABLE invites (
 - `consume_invite` is atomic: UPDATE with all validity conditions in the WHERE clause; a follow-up SELECT disambiguates NotFound vs exhausted/expired.
 - In `invite_only` mode, user account creation is now permitted (so users can auth before using an invite); full membership gating is deferred to Feature 13.
 - Expired invite cleanup runs as a background task every hour.
+- `POST /invites` returns `invite_link` built from the configured bind address and generated invite code.
+- Joining by invite assigns the `everyone` role if missing, then applies optional `grant_role_id`.
+- `MEMBER_JOIN` gateway events are emitted on successful invite joins.
 
 ## Task List
 
 ### Server
-- [ ] Define Invite model struct in `server/src/storage/models.rs`
-- [ ] Implement invite code generation utility (8-char Base62 strings)
-- [ ] Add `InviteStore` trait to the storage trait hierarchy
-- [ ] Write SQLite migration to create `invites` table
-- [ ] Implement `InviteStore` for the SQLite backend
-- [ ] Implement POST `/invites` handler (create invite, permission check)
-- [ ] Implement GET `/invites` handler (list all invites, permission check)
-- [ ] Implement GET `/invites/:code` handler (public invite preview, returns server name and member count)
-- [ ] Implement DELETE `/invites/:code` handler (revoke invite, permission check)
-- [ ] Implement POST `/invites/:code/join` handler: validate invite (not expired, not exhausted), assign grant role, increment use_count, broadcast MEMBER_JOIN via gateway
-- [ ] Enforce membership mode: in `invite_only` mode user creation is allowed; access gating deferred to Feature 13
-- [ ] Add background cleanup for expired invites (hourly background task)
+- [x] Define Invite model struct in `server/src/storage/models.rs`
+- [x] Implement invite code generation utility (8-char Base62 strings)
+- [x] Add `InviteStore` trait to the storage trait hierarchy
+- [x] Write SQLite migration to create `invites` table
+- [x] Implement `InviteStore` for the SQLite backend
+- [x] Implement POST `/invites` handler (create invite, permission check)
+- [x] Implement GET `/invites` handler (list all invites, permission check)
+- [x] Implement GET `/invites/:code` handler (public invite preview, returns server name and member count)
+- [x] Implement DELETE `/invites/:code` handler (revoke invite, permission check)
+- [x] Implement POST `/invites/:code/join` handler: validate invite (not expired, not exhausted), assign grant role, increment use_count, broadcast MEMBER_JOIN via gateway
+- [x] Enforce membership mode: in `invite_only` mode user creation is allowed; access gating deferred to Feature 13
+- [x] Add background cleanup for expired invites (hourly background task)
 
 ### Client
-- [ ] Add invites API client functions
-- [ ] Add invites Zustand store slice
-- [ ] Build CreateInviteDialog with options for max uses, expiry, and role grant
-- [ ] Build InviteList table with usage stats and revoke action
-- [ ] Build JoinByInvite flow: parse invite URL, fetch preview, show join button
-- [ ] Handle `decentcom://` or `https://` invite URL scheme in the Tauri app (deep link registration)
-- [ ] Copy-to-clipboard button for generated invite links
+- [x] Add invites API client functions
+- [x] Add invites Zustand store slice
+- [x] Build CreateInviteDialog with options for max uses, expiry, and role grant
+- [x] Build InviteList table with usage stats and revoke action
+- [x] Build JoinByInvite flow: parse invite URL, fetch preview, show join button
+- [x] Handle `decentcom://` or `https://` invite URL scheme in the Tauri app (deep link registration)
+- [x] Copy-to-clipboard button for generated invite links
 
 ## Test List
-- [ ] Unit: invite code generation produces URL-safe strings of correct length
-- [ ] Unit: invite expiry check correctly identifies expired invites (storage unit test)
-- [ ] Integration: create invite, verify it appears in GET /invites
-- [ ] Integration: join via valid invite, verify membership is created and roles assigned
-- [ ] Integration: join via single-use invite, verify second join attempt fails
-- [ ] Integration: join via expired invite returns appropriate error (storage unit test)
-- [ ] Integration: join via invite with grant_role_id assigns the specified role
-- [ ] Integration: revoke invite, verify it can no longer be used
-- [ ] Integration: user without manage_invites permission cannot create or list invites
-- [ ] Integration: GET /invites/:code returns server preview without auth
+- [x] Unit: invite code generation produces URL-safe strings of correct length
+- [x] Unit: invite expiry check correctly identifies expired invites (storage unit test)
+- [x] Integration: create invite, verify it appears in GET /invites
+- [x] Integration: join via valid invite, verify membership is created and roles assigned
+- [x] Integration: join via single-use invite, verify second join attempt fails
+- [x] Integration: join via expired invite returns appropriate error (storage unit test)
+- [x] Integration: join via invite with grant_role_id assigns the specified role
+- [x] Integration: revoke invite, verify it can no longer be used
+- [x] Integration: user without manage_invites permission cannot create or list invites
+- [x] Integration: GET /invites/:code returns server preview without auth
 - [ ] Integration: in invite_only mode, direct join (without invite) is rejected (deferred to Feature 13)
 - [ ] Manual: create invite dialog works, link is copyable, and join flow completes
 

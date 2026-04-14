@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { ServerConnect } from "./components/connection/ServerConnect";
+import { JoinByInvite } from "./components/invites/JoinByInvite";
 import { AppShell } from "./components/layout/AppShell";
+import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
 import { useAppStore } from "./stores/appStore";
+import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
 import { Setup } from "./pages/Setup";
 import "./App.css";
@@ -19,6 +22,8 @@ function App() {
   } = useIdentity();
   const { currentServerId, addServer, initTheme } = useAppStore();
   const { connect, status } = useServerStore();
+  const joinInvite = useInvitesStore((state) => state.joinInvite);
+  const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
 
@@ -32,6 +37,25 @@ function App() {
     try {
       await connect(address);
       addServer(address);
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setConnectLoading(false);
+    }
+  }
+
+  async function handleJoinByInvite(address: string, inviteCode: string) {
+    setConnectLoading(true);
+    setConnectError(null);
+    try {
+      await connect(address);
+      const token = useServerStore.getState().sessionToken;
+      if (!token) {
+        throw new Error("failed to establish authenticated session");
+      }
+      await joinInvite(address, token, inviteCode);
+      addServer(address);
+      clearInviteLink();
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -60,6 +84,18 @@ function App() {
   }
 
   if (!currentServerId) {
+    if (invite) {
+      return (
+        <JoinByInvite
+          serverAddress={invite.serverAddress}
+          inviteCode={invite.inviteCode}
+          loading={connectLoading || status === "connecting"}
+          onJoin={handleJoinByInvite}
+          onBack={clearInviteLink}
+        />
+      );
+    }
+
     return (
       <ServerConnect
         loading={connectLoading || status === "connecting"}

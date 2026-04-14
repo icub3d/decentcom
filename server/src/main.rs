@@ -2,6 +2,7 @@ mod auth;
 mod channels;
 mod config;
 mod gateway;
+mod invites;
 mod messages;
 mod permissions;
 mod roles;
@@ -42,6 +43,7 @@ pub fn app(state: AppState) -> Router {
         .route("/health", get(health))
         .nest("/api/v1", channels::router())
         .nest("/api/v1", messages::router())
+        .nest("/api/v1", invites::router())
         .nest("/api/v1", roles::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
@@ -112,6 +114,21 @@ fn spawn_challenge_cleanup(challenge_store: auth::challenge::SharedChallengeStor
     });
 }
 
+fn spawn_invite_cleanup(storage: DynStorage) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60 * 60));
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            match storage.delete_expired_invites(chrono::Utc::now()).await {
+                Ok(n) if n > 0 => info!(removed = n, "expired invites cleaned up"),
+                Ok(_) => {}
+                Err(e) => warn!(error = %e, "invite cleanup failed"),
+            }
+        }
+    });
+}
+
 /// Seed initial data if the server is freshly initialized (no channels exist).
 async fn seed_channels(storage: &DynStorage) -> Result<(), Box<dyn std::error::Error>> {
     let channels = storage.list_channels().await?;
@@ -140,6 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let challenge_store = auth::challenge_store();
     spawn_session_cleanup(storage.clone());
     spawn_challenge_cleanup(challenge_store.clone());
+    spawn_invite_cleanup(storage.clone());
 
     let bind = config.network.bind_address;
     let state = AppState {

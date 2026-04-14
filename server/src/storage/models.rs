@@ -74,3 +74,14 @@ pub struct ChannelPermissionOverride {
     pub allow: i64,
     pub deny: i64,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Invite {
+    pub code: String,
+    pub created_by: String,
+    pub grant_role_id: Option<String>,
+    pub max_uses: i64,
+    pub use_count: i64,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}

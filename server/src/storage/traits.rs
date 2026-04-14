@@ -1,8 +1,10 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 use super::models::{
-    Category, Channel, ChannelPermissionOverride, MemberRole, Message, Role, Session, User,
+    Category, Channel, ChannelPermissionOverride, Invite, MemberRole, Message, Role, Session,
+    User,
 };
 use super::StorageError;
 
@@ -144,6 +146,23 @@ pub trait RoleStore: Send + Sync {
     ) -> Result<Vec<ChannelPermissionOverride>, StorageError>;
 }
 
+#[async_trait]
+pub trait InviteStore: Send + Sync {
+    async fn create_invite(
+        &self,
+        code: &str,
+        created_by: &str,
+        grant_role_id: Option<&str>,
+        max_uses: i64,
+        expires_at: Option<DateTime<Utc>>,
+    ) -> Result<Invite, StorageError>;
+    async fn get_invite(&self, code: &str) -> Result<Option<Invite>, StorageError>;
+    async fn list_active_invites(&self, now: DateTime<Utc>) -> Result<Vec<Invite>, StorageError>;
+    async fn revoke_invite(&self, code: &str) -> Result<(), StorageError>;
+    async fn consume_invite(&self, code: &str, now: DateTime<Utc>) -> Result<Invite, StorageError>;
+    async fn delete_expired_invites(&self, now: DateTime<Utc>) -> Result<u64, StorageError>;
+}
+
 /// Media storage is defined here but implementation is deferred to the
 /// file-uploads feature.
 #[async_trait]
@@ -161,11 +180,17 @@ pub trait MediaStore: Send + Sync {
 }
 
 pub trait Storage:
-    UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore
+    UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore + InviteStore
 {
 }
 
 impl<T> Storage for T where
-    T: UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore
+    T: UserStore
+        + ChannelStore
+        + CategoryStore
+        + MessageStore
+        + SessionStore
+        + RoleStore
+        + InviteStore
 {
 }

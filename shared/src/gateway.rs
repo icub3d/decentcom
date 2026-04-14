@@ -21,6 +21,7 @@ pub enum Op {
     RoleDelete,
     MemberRoleAdd,
     MemberRoleRemove,
+    MemberJoin,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
