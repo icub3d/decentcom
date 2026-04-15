@@ -9,7 +9,7 @@ interface MessageViewProps {
   hasMore: boolean;
   connected: boolean;
   onLoadMore: () => Promise<void>;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, attachmentIds?: string[]) => Promise<void>;
   memberPanelOpen?: boolean;
   onToggleMemberPanel?: () => void;
 }

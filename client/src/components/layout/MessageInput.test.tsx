@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MessageInput } from "./MessageInput";
 
+vi.mock("../../stores/serverStore", () => ({
+  useServerStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ address: "http://localhost", sessionToken: "tok", currentChannelId: "ch1" }),
+}));
+
 describe("MessageInput", () => {
   it("sends on Enter and keeps newline on Shift+Enter", async () => {
     const onSend = vi.fn(async () => undefined);
@@ -14,7 +19,7 @@ describe("MessageInput", () => {
       fireEvent.keyDown(textbox, { key: "Enter" });
     });
 
-    expect(onSend).toHaveBeenCalledWith("hello");
+    expect(onSend).toHaveBeenCalledWith("hello", undefined);
 
     await act(async () => {
       fireEvent.change(textbox, { target: { value: "line1" } });

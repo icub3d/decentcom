@@ -1,6 +1,7 @@
 import type { Message } from "../../stores/serverStore";
 import { useMembersStore } from "../../stores/members";
 import { Avatar } from "../profile/Avatar";
+import { MessageAttachment } from "./MessageAttachment";
 
 interface MessageItemProps {
   message: Message;
@@ -41,7 +42,18 @@ export function MessageItem({ message }: MessageItemProps) {
         {message.deleted ? (
           <p className="italic text-ctp-overlay1">This message was deleted.</p>
         ) : (
-          <p className="whitespace-pre-wrap text-ctp-text">{message.content}</p>
+          <>
+            {message.content && (
+              <p className="whitespace-pre-wrap text-ctp-text">{message.content}</p>
+            )}
+            {message.attachments?.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {message.attachments.map((a) => (
+                  <MessageAttachment key={a.id} attachment={a} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </article>

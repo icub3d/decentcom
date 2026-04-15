@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { CreateChannelRequest, UpdateChannelRequest } from "../api/channels";
 import * as channelsApi from "../api/channels";
+import type { Attachment } from "../api/media";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
 import { ApiError, apiRequest } from "../services/api";
@@ -26,6 +27,7 @@ export interface Message {
   created_at: string;
   edited_at: string | null;
   deleted: boolean;
+  attachments: Attachment[];
 }
 
 interface ChannelsResponse {
@@ -75,7 +77,7 @@ export interface ServerStore {
   disconnect: () => void;
   revalidate: () => Promise<void>;
   setCurrentChannel: (id: string) => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
   loadMoreMessages: (channelId: string) => Promise<void>;
   createChannel: (req: CreateChannelRequest) => Promise<void>;
   updateChannel: (channelId: string, req: UpdateChannelRequest) => Promise<void>;
@@ -239,10 +241,15 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     }
   },
 
-  sendMessage: async (content: string) => {
+  sendMessage: async (content: string, attachmentIds?: string[]) => {
     const state = get();
     if (!state.currentChannelId || !state.sessionToken) {
       return;
+    }
+
+    const body: { content: string; attachment_ids?: string[] } = { content };
+    if (attachmentIds && attachmentIds.length > 0) {
+      body.attachment_ids = attachmentIds;
     }
 
     await apiRequest<Message>(
@@ -251,7 +258,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       {
         method: "POST",
         token: state.sessionToken,
-        body: JSON.stringify({ content }),
+        body: JSON.stringify(body),
       },
     );
   },
@@ -339,7 +346,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
             messages: {
               ...state.messages,
               [deleted.channel_id]: existing.map((m) =>
-                m.id === deleted.id ? { ...m, deleted: true, content: "" } : m,
+                m.id === deleted.id ? { ...m, deleted: true, content: "", attachments: [] } : m,
               ),
             },
           };

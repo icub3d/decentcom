@@ -4,6 +4,7 @@ use axum::Json;
 use serde::Serialize;
 use shared::gateway::Op;
 
+use crate::attachments::models::AttachmentResponse;
 use crate::gateway::events::event_json;
 use crate::messages::models::{
     CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, UpdateMessageRequest,
@@ -114,14 +115,40 @@ pub(super) async fn create_message(
     if !has_permission(perms, SEND_MESSAGES) {
         return Err(forbidden("missing send_messages permission"));
     }
-    validate_message_content(&req.content, state.config.content.max_message_length)?;
+
+    // Allow empty content only if there are attachments.
+    let has_attachments = !req.attachment_ids.is_empty();
+    let content_empty = req.content.trim().is_empty();
+    if !content_empty || !has_attachments {
+        validate_message_content(&req.content, state.config.content.max_message_length)?;
+    }
+
+    let content = if req.content.trim().is_empty() && has_attachments {
+        ""
+    } else {
+        &req.content
+    };
 
     let message = state
         .storage
-        .create_message(&channel_id, &auth.user_id, &req.content)
+        .create_message(&channel_id, &auth.user_id, content)
         .await
         .map_err(storage_err)?;
-    let response = MessageResponse::from(message);
+
+    let attachments = if has_attachments {
+        state
+            .storage
+            .associate_attachments(&req.attachment_ids, &message.id, &auth.user_id)
+            .await
+            .map_err(storage_err)?
+            .into_iter()
+            .map(AttachmentResponse::from)
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let response = MessageResponse::from_message(message, attachments);
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);
@@ -162,7 +189,18 @@ pub(super) async fn list_messages(
         items.truncate(limit as usize);
     }
 
-    let messages = items.into_iter().map(MessageResponse::from).collect();
+    let mut messages = Vec::with_capacity(items.len());
+    for item in items {
+        let atts = state
+            .storage
+            .list_attachments_for_message(&item.id)
+            .await
+            .map_err(internal)?
+            .into_iter()
+            .map(AttachmentResponse::from)
+            .collect();
+        messages.push(MessageResponse::from_message(item, atts));
+    }
     Ok(Json(MessagePage { messages, has_more }))
 }
 
@@ -190,7 +228,16 @@ pub(super) async fn get_message(
         return Err(not_found("message not found"));
     }
 
-    Ok(Json(MessageResponse::from(message)))
+    let atts = state
+        .storage
+        .list_attachments_for_message(&message.id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(AttachmentResponse::from)
+        .collect();
+
+    Ok(Json(MessageResponse::from_message(message, atts)))
 }
 
 pub(super) async fn update_message(
@@ -230,7 +277,15 @@ pub(super) async fn update_message(
         .update_message(&message_id, &req.content)
         .await
         .map_err(storage_err)?;
-    let response = MessageResponse::from(updated);
+    let atts = state
+        .storage
+        .list_attachments_for_message(&updated.id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(AttachmentResponse::from)
+        .collect();
+    let response = MessageResponse::from_message(updated, atts);
 
     if let Some(msg) = event_json(Op::MessageUpdate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);
