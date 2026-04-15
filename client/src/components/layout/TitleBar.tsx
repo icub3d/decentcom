@@ -42,6 +42,7 @@ export function TitleBar() {
       <div className="flex items-center h-full">
         <button
           onClick={handleMinimize}
+          data-tauri-no-drag
           className="w-12 h-full flex items-center justify-center hover:bg-ctp-surface0 transition-colors text-ctp-text"
           title="Minimize"
         >
@@ -51,6 +52,7 @@ export function TitleBar() {
         </button>
         <button
           onClick={handleMaximize}
+          data-tauri-no-drag
           className="w-12 h-full flex items-center justify-center hover:bg-ctp-surface0 transition-colors text-ctp-text"
           title={isMaximized ? "Restore" : "Maximize"}
         >
@@ -82,6 +84,7 @@ export function TitleBar() {
         </button>
         <button
           onClick={handleClose}
+          data-tauri-no-drag
           className="w-12 h-full flex items-center justify-center hover:bg-ctp-red hover:text-ctp-crust transition-colors text-ctp-text"
           title="Close"
         >
