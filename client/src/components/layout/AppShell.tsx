@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { assignRole, removeRole } from "../../api/members";
 import { useAppStore } from "../../stores/appStore";
 import { useMembersStore } from "../../stores/members";
 import { useServerStore } from "../../stores/serverStore";
@@ -18,6 +19,8 @@ export function AppShell() {
     messages,
     hasMore,
     status,
+    roles,
+    memberRoleIdsByUserId,
     setCurrentChannel,
     sendMessage,
     loadMoreMessages,
@@ -51,6 +54,22 @@ export function AppShell() {
       await banMember(address, sessionToken, pubkey, reason);
     },
     [address, sessionToken, banMember],
+  );
+
+  const handleAssignRole = useCallback(
+    async (pubkey: string, roleId: string) => {
+      if (!address || !sessionToken) throw new Error("Not connected");
+      await assignRole(address, sessionToken, pubkey, roleId);
+    },
+    [address, sessionToken],
+  );
+
+  const handleRemoveRole = useCallback(
+    async (pubkey: string, roleId: string) => {
+      if (!address || !sessionToken) throw new Error("Not connected");
+      await removeRole(address, sessionToken, pubkey, roleId);
+    },
+    [address, sessionToken],
   );
 
   const serverList = useMemo(() => Object.values(servers), [servers]);
@@ -87,7 +106,15 @@ export function AppShell() {
       />
       {memberPanelOpen && currentServerId && status === "connected" && (
         <aside className="w-64 border-l border-ctp-overlay0 bg-ctp-mantle overflow-y-auto shrink-0">
-          <MemberList members={members} onKick={handleKick} onBan={handleBan} />
+          <MemberList
+            members={members}
+            roles={roles}
+            memberRoleIdsByUserId={memberRoleIdsByUserId}
+            onKick={handleKick}
+            onBan={handleBan}
+            onAssignRole={handleAssignRole}
+            onRemoveRole={handleRemoveRole}
+          />
         </aside>
       )}
     </main>

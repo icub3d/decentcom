@@ -118,3 +118,29 @@ export async function removeAllowlist(baseUrl: string, token: string, pubkey: st
     token,
   });
 }
+
+export async function assignRole(
+  baseUrl: string,
+  token: string,
+  pubkey: string,
+  roleId: string,
+): Promise<void> {
+  await apiRequest<void>(
+    baseUrl,
+    `/api/v1/members/${encodeURIComponent(pubkey)}/roles/${encodeURIComponent(roleId)}`,
+    { method: "PUT", token },
+  );
+}
+
+export async function removeRole(
+  baseUrl: string,
+  token: string,
+  pubkey: string,
+  roleId: string,
+): Promise<void> {
+  await apiRequest<void>(
+    baseUrl,
+    `/api/v1/members/${encodeURIComponent(pubkey)}/roles/${encodeURIComponent(roleId)}`,
+    { method: "DELETE", token },
+  );
+}
