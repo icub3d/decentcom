@@ -8,6 +8,7 @@ mod messages;
 mod permissions;
 mod profiles;
 mod roles;
+mod server_info;
 mod storage;
 
 use std::path::PathBuf;
@@ -48,6 +49,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", invites::router())
         .nest("/api/v1", membership::router())
         .nest("/api/v1", roles::router())
+        .nest("/api/v1", server_info::router())
         .nest("/api/v1", profiles::profile_router())
         .nest("/api/v1", profiles::media_router())
         .nest("/api/v1/auth", auth::router())

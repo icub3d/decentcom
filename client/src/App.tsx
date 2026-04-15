@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { ServerConnect } from "./components/connection/ServerConnect";
 import { JoinByInvite } from "./components/invites/JoinByInvite";
 import { AppShell } from "./components/layout/AppShell";
+import { TitleBar } from "./components/layout/TitleBar";
 import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
 import { authenticateServer } from "./services/auth";
+import { getServerInfo } from "./api/server";
 import { useAppStore } from "./stores/appStore";
 import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
@@ -22,7 +24,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, addServer, initTheme } = useAppStore();
-  const { connect, status, address: connectedAddress } = useServerStore();
+  const { connect, status } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -49,8 +51,9 @@ function App() {
     setConnectLoading(true);
     setConnectError(null);
     try {
+      const info = await getServerInfo(address);
       await connect(address);
-      addServer(address);
+      addServer(address, info.name);
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -62,10 +65,11 @@ function App() {
     setConnectLoading(true);
     setConnectError(null);
     try {
+      const info = await getServerInfo(address);
       const session = await authenticateServer(address);
       await joinInvite(address, session.token, inviteCode);
       await connect(address);
-      addServer(address);
+      addServer(address, info.name);
       clearInviteLink();
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : String(err));
@@ -74,17 +78,16 @@ function App() {
     }
   }
 
+  let content;
   if (loading && hasIdentity === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-ctp-base text-ctp-text">
+    content = (
+      <div className="flex-1 flex items-center justify-center bg-ctp-base text-ctp-text">
         <div className="animate-pulse">Loading identity...</div>
       </div>
     );
-  }
-
-  if (!hasIdentity) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-ctp-base p-4 text-ctp-text">
+  } else if (!hasIdentity) {
+    content = (
+      <main className="flex-1 flex items-center justify-center bg-ctp-base p-4 text-ctp-text">
         <Setup
           onGenerate={generateIdentity}
           onImport={importIdentity}
@@ -92,39 +95,48 @@ function App() {
         />
       </main>
     );
-  }
-
-  if (!currentServerId) {
+  } else if (!currentServerId) {
     if (invite) {
-      return (
-        <JoinByInvite
-          serverAddress={invite.serverAddress}
-          inviteCode={invite.inviteCode}
-          loading={connectLoading || status === "connecting"}
-          onJoin={handleJoinByInvite}
-          onBack={clearInviteLink}
-        />
+      content = (
+        <div className="flex-1">
+          <JoinByInvite
+            serverAddress={invite.serverAddress}
+            inviteCode={invite.inviteCode}
+            loading={connectLoading || status === "connecting"}
+            onJoin={handleJoinByInvite}
+            onBack={clearInviteLink}
+          />
+        </div>
+      );
+    } else {
+      content = (
+        <div className="flex-1">
+          <ServerConnect
+            loading={connectLoading || status === "connecting"}
+            error={connectError}
+            onConnect={handleConnect}
+          />
+        </div>
       );
     }
-
-    return (
-      <ServerConnect
-        loading={connectLoading || status === "connecting"}
-        error={connectError}
-        onConnect={handleConnect}
-      />
+  } else {
+    content = (
+      <>
+        {(error || connectError) && (
+          <div className="fixed right-4 top-12 z-20 rounded-lg border border-ctp-red bg-ctp-red/20 px-4 py-2 text-sm text-ctp-red">
+            {error || connectError}
+          </div>
+        )}
+        <AppShell />
+      </>
     );
   }
 
   return (
-    <>
-      {(error || connectError) && (
-        <div className="fixed right-4 top-4 z-20 rounded-lg border border-ctp-red bg-ctp-red/20 px-4 py-2 text-sm text-ctp-red">
-          {error || connectError}
-        </div>
-      )}
-      <AppShell />
-    </>
+    <div className="h-screen flex flex-col overflow-hidden">
+      <TitleBar />
+      {content}
+    </div>
   );
 }
 

@@ -15,18 +15,34 @@ import { useMembersStore } from "../../stores/members";
 import { useServerStore } from "../../stores/serverStore";
 
 interface ServerSidebarProps {
-  servers: Array<{ id: string; address: string }>;
+  servers: Array<{ id: string; address: string; name?: string }>;
   currentServerId: string | null;
   onSelectServer: (id: string) => void;
 }
 
-function initials(address: string): string {
-  return new URL(address).hostname.slice(0, 2).toUpperCase();
+function initials(name: string | undefined, address: string): string {
+  if (!name || name.trim() === "") {
+    try {
+      return new URL(address).hostname.slice(0, 2).toUpperCase();
+    } catch {
+      return "??";
+    }
+  }
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return parts
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
 }
-
 export function ServerSidebar({ servers, currentServerId, onSelectServer }: ServerSidebarProps) {
-  const { theme, setTheme, setCurrentServer } = useAppStore();
+  const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
+  // ... rest of imports
+
   const token = useServerStore((state) => state.sessionToken);
   const roles = useServerStore((state) => state.roles);
   const permissions = usePermissions();
@@ -108,18 +124,31 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
       {servers.map((server) => {
         const active = server.id === currentServerId;
         return (
-          <button
-            key={server.id}
-            onClick={() => onSelectServer(server.id)}
-            title={server.address}
-            className={`h-12 w-12 rounded-xl font-black text-sm transition ${
-              active
-                ? "bg-ctp-blue text-ctp-crust"
-                : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
-            }`}
-          >
-            {initials(server.address)}
-          </button>
+          <div key={server.id} className="group relative">
+            <button
+              onClick={() => onSelectServer(server.id)}
+              title={server.name || server.address}
+              className={`h-12 w-12 rounded-xl font-black text-sm transition ${
+                active
+                  ? "bg-ctp-blue text-ctp-crust"
+                  : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
+              }`}
+            >
+              {initials(server.name, server.address)}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Remove connection to ${server.address}?`)) {
+                  removeServer(server.id);
+                }
+              }}
+              className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-ctp-red text-[10px] font-bold text-ctp-crust shadow-lg hover:scale-110 group-hover:flex"
+              title="Remove server"
+            >
+              ×
+            </button>
+          </div>
         );
       })}
 
