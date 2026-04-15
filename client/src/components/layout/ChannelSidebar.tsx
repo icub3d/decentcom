@@ -1,16 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 import { MANAGE_CHANNELS, usePermissions } from "../../hooks/usePermissions";
-import type { Category, Channel } from "../../stores/serverStore";
+import type { Channel } from "../../stores/serverStore";
 import { useServerStore } from "../../stores/serverStore";
 import { CreateChannelDialog } from "../channels/CreateChannelDialog";
-import { EditCategoryDialog } from "../channels/EditCategoryDialog";
 import { EditChannelDialog } from "../channels/EditChannelDialog";
 import { StatusIndicator } from "../connection/StatusIndicator";
 
 interface ChannelSidebarProps {
   channels: Channel[];
-  categories: Category[];
   currentChannelId: string | null;
   status: "connecting" | "connected" | "disconnected";
   onSelectChannel: (id: string) => void;
@@ -19,12 +17,10 @@ interface ChannelSidebarProps {
 type DialogState =
   | { kind: "none" }
   | { kind: "createChannel" }
-  | { kind: "editChannel"; channel: Channel }
-  | { kind: "editCategory"; category: Category };
+  | { kind: "editChannel"; channel: Channel };
 
 export function ChannelSidebar({
   channels,
-  categories,
   currentChannelId,
   status,
   onSelectChannel,
@@ -37,12 +33,34 @@ export function ChannelSidebar({
     createChannel,
     updateChannel,
     deleteChannel,
-    createCategory,
-    updateCategory,
-    deleteCategory,
   } = useServerStore();
 
-  const uncategorized = channels.filter((ch) => !ch.category_id);
+  // Group channels by category string, sorted alphabetically by category name.
+  // Uncategorized channels (null category) go under "General".
+  const grouped = useMemo(() => {
+    const groups: Record<string, Channel[]> = {};
+    for (const ch of channels) {
+      const cat = ch.category ?? "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(ch);
+    }
+    // Sort category names alphabetically, but keep "General" last
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "General") return 1;
+      if (b === "General") return -1;
+      return a.localeCompare(b);
+    });
+    return sortedKeys.map((name) => ({ name, channels: groups[name] }));
+  }, [channels]);
+
+  // Collect existing category names for the create dialog
+  const existingCategories = useMemo(() => {
+    const names = new Set<string>();
+    for (const ch of channels) {
+      if (ch.category) names.add(ch.category);
+    }
+    return Array.from(names).sort();
+  }, [channels]);
 
   const channelButtonClass = (id: string) =>
     `flex-1 min-w-0 rounded-md px-3 py-2 text-left text-sm transition ${
@@ -70,51 +88,12 @@ export function ChannelSidebar({
       </div>
 
       <div className="space-y-4">
-        {categories.map((category) => {
-          const grouped = channels.filter((ch) => ch.category_id === category.id);
-          return (
-            <section key={category.id} className="space-y-1">
-              <div className="flex items-center justify-between group">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-ctp-overlay1">
-                  {category.name}
-                </h3>
-                {canManage && (
-                  <button
-                    onClick={() => setDialog({ kind: "editCategory", category })}
-                    title={`Edit ${category.name}`}
-                    className="rounded-md px-1 py-0.5 text-xs text-ctp-overlay0 opacity-0 group-hover:opacity-100 hover:text-ctp-blue hover:bg-ctp-surface0 transition"
-                  >
-                    ⚙
-                  </button>
-                )}
-              </div>
-              {grouped.map((channel) => (
-                <div key={channel.id} className="flex items-center group/ch">
-                  <button
-                    onClick={() => onSelectChannel(channel.id)}
-                    className={channelButtonClass(channel.id)}
-                  >
-                    <span className="truncate block">#{channel.name}</span>
-                  </button>
-                  {canManage && (
-                    <button
-                      onClick={() => setDialog({ kind: "editChannel", channel })}
-                      title={`Edit ${channel.name}`}
-                      className="shrink-0 rounded-md px-1 py-0.5 text-xs text-ctp-overlay0 opacity-0 group-hover/ch:opacity-100 hover:text-ctp-blue hover:bg-ctp-surface0 transition"
-                    >
-                      ⚙
-                    </button>
-                  )}
-                </div>
-              ))}
-            </section>
-          );
-        })}
-
-        {(!!uncategorized.length || canManage) && (
-          <section className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ctp-overlay1">General</h3>
-            {uncategorized.map((channel) => (
+        {grouped.map((group) => (
+          <section key={group.name} className="space-y-1">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ctp-overlay1">
+              {group.name}
+            </h3>
+            {group.channels.map((channel) => (
               <div key={channel.id} className="flex items-center group/ch">
                 <button
                   onClick={() => onSelectChannel(channel.id)}
@@ -134,20 +113,15 @@ export function ChannelSidebar({
               </div>
             ))}
           </section>
-        )}
+        ))}
       </div>
 
       {dialog.kind === "createChannel" && (
         <CreateChannelDialog
-          categories={categories}
+          existingCategories={existingCategories}
           onClose={() => setDialog({ kind: "none" })}
-          onCreate={async (name, categoryId, position, newCategoryName) => {
-            let resolvedCategoryId = categoryId;
-            if (newCategoryName) {
-              const created = await createCategory({ name: newCategoryName });
-              resolvedCategoryId = created.id;
-            }
-            await createChannel({ name, category_id: resolvedCategoryId, position });
+          onCreate={async (name, category, position) => {
+            await createChannel({ name, category, position });
           }}
         />
       )}
@@ -155,26 +129,13 @@ export function ChannelSidebar({
       {dialog.kind === "editChannel" && (
         <EditChannelDialog
           channel={dialog.channel}
-          categories={categories}
+          existingCategories={existingCategories}
           onClose={() => setDialog({ kind: "none" })}
-          onUpdate={async (channelId, name, categoryId, position, topic) => {
-            await updateChannel(channelId, { name, category_id: categoryId, position, topic });
+          onUpdate={async (channelId, name, category, position, topic) => {
+            await updateChannel(channelId, { name, category, position, topic });
           }}
           onDelete={async (channelId) => {
             await deleteChannel(channelId);
-          }}
-        />
-      )}
-
-      {dialog.kind === "editCategory" && (
-        <EditCategoryDialog
-          category={dialog.category}
-          onClose={() => setDialog({ kind: "none" })}
-          onUpdate={async (categoryId, name, position) => {
-            await updateCategory(categoryId, { name, position });
-          }}
-          onDelete={async (categoryId) => {
-            await deleteCategory(categoryId);
           }}
         />
       )}

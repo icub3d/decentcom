@@ -1,35 +1,32 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { Category } from "../../stores/serverStore";
-
 const NEW_CATEGORY_VALUE = "__new__";
 const CHANNEL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
 interface CreateChannelDialogProps {
-  categories: Category[];
+  existingCategories: string[];
   onClose: () => void;
   onCreate: (
     name: string,
-    categoryId: string | null,
+    category: string | null,
     position: number,
-    newCategoryName: string | null,
   ) => Promise<void>;
 }
 
 export function CreateChannelDialog({
-  categories,
+  existingCategories,
   onClose,
   onCreate,
 }: CreateChannelDialogProps) {
   const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categorySelection, setCategorySelection] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [position, setPosition] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const creatingCategory = categoryId === NEW_CATEGORY_VALUE;
+  const creatingCategory = categorySelection === NEW_CATEGORY_VALUE;
 
   async function handleSubmit() {
     setError(null);
@@ -55,14 +52,13 @@ export function CreateChannelDialog({
       return;
     }
 
+    const resolvedCategory = creatingCategory
+      ? newCategoryName.trim()
+      : categorySelection || null;
+
     setPending(true);
     try {
-      await onCreate(
-        trimmed,
-        creatingCategory ? null : categoryId || null,
-        pos,
-        creatingCategory ? newCategoryName.trim() : null,
-      );
+      await onCreate(trimmed, resolvedCategory, pos);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -97,14 +93,14 @@ export function CreateChannelDialog({
           Category
         </label>
         <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          value={categorySelection}
+          onChange={(e) => setCategorySelection(e.target.value)}
           className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
         >
           <option value="">None (uncategorized)</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
+          {existingCategories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
             </option>
           ))}
           <option value={NEW_CATEGORY_VALUE}>+ New category…</option>

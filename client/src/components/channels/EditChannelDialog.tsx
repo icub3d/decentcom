@@ -1,26 +1,31 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { Category, Channel } from "../../stores/serverStore";
+import type { Channel } from "../../stores/serverStore";
+
+const NEW_CATEGORY_VALUE = "__new__";
 
 interface EditChannelDialogProps {
   channel: Channel;
-  categories: Category[];
+  existingCategories: string[];
   onClose: () => void;
-  onUpdate: (channelId: string, name: string, categoryId: string | null, position: number, topic: string | null) => Promise<void>;
+  onUpdate: (channelId: string, name: string, category: string | null, position: number, topic: string | null) => Promise<void>;
   onDelete: (channelId: string) => Promise<void>;
 }
 
 const CHANNEL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
-export function EditChannelDialog({ channel, categories, onClose, onUpdate, onDelete }: EditChannelDialogProps) {
+export function EditChannelDialog({ channel, existingCategories, onClose, onUpdate, onDelete }: EditChannelDialogProps) {
   const [name, setName] = useState(channel.name);
-  const [categoryId, setCategoryId] = useState(channel.category_id ?? "");
+  const [categorySelection, setCategorySelection] = useState(channel.category ?? "");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [position, setPosition] = useState(String(channel.position));
   const [topic, setTopic] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const creatingCategory = categorySelection === NEW_CATEGORY_VALUE;
 
   async function handleSave() {
     setError(null);
@@ -41,9 +46,18 @@ export function EditChannelDialog({ channel, categories, onClose, onUpdate, onDe
       return;
     }
 
+    if (creatingCategory && !newCategoryName.trim()) {
+      setError("New category name is required.");
+      return;
+    }
+
+    const resolvedCategory = creatingCategory
+      ? newCategoryName.trim()
+      : categorySelection || null;
+
     setPending(true);
     try {
-      await onUpdate(channel.id, trimmed, categoryId || null, pos, topic || null);
+      await onUpdate(channel.id, trimmed, resolvedCategory, pos, topic || null);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -88,17 +102,32 @@ export function EditChannelDialog({ channel, categories, onClose, onUpdate, onDe
           Category
         </label>
         <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          value={categorySelection}
+          onChange={(e) => setCategorySelection(e.target.value)}
           className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
         >
           <option value="">None</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
+          {existingCategories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
             </option>
           ))}
+          <option value={NEW_CATEGORY_VALUE}>+ New category…</option>
         </select>
+
+        {creatingCategory && (
+          <>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-ctp-subtext0">
+              New Category Name
+            </label>
+            <input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Voice Channels"
+              className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
+            />
+          </>
+        )}
 
         <label className="block text-xs font-semibold uppercase tracking-wide text-ctp-subtext0">
           Position

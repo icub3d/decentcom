@@ -10,7 +10,6 @@ export function AppShell() {
   const { currentServerId, servers, setCurrentServer } = useAppStore();
   const {
     channels,
-    categories,
     currentChannelId,
     messages,
     hasMore,
@@ -34,7 +33,6 @@ export function AppShell() {
       />
       <ChannelSidebar
         channels={channels}
-        categories={categories}
         currentChannelId={currentChannelId}
         status={status}
         onSelectChannel={(id) => {

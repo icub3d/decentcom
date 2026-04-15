@@ -12,19 +12,11 @@ pub struct User {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Category {
-    pub id: String,
-    pub name: String,
-    pub position: i32,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Channel {
     pub id: String,
     pub name: String,
     pub topic: Option<String>,
-    pub category_id: Option<String>,
+    pub category: Option<String>,
     pub position: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

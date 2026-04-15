@@ -9,6 +9,16 @@ vi.mock("@tauri-apps/api/core", () => ({
   }),
 }));
 
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    isMaximized: vi.fn().mockResolvedValue(false),
+    onResized: vi.fn().mockResolvedValue(vi.fn()),
+    minimize: vi.fn(),
+    toggleMaximize: vi.fn(),
+    close: vi.fn(),
+  }),
+}));
+
 import App from "./App";
 
 describe("App", () => {
