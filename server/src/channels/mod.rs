@@ -2,7 +2,7 @@ mod handlers;
 pub mod models;
 pub mod validation;
 
-use axum::routing::{get, patch, post};
+use axum::routing::get;
 use axum::Router;
 
 use crate::AppState;
@@ -16,11 +16,6 @@ pub fn router() -> Router<AppState> {
                 .patch(handlers::update_channel)
                 .delete(handlers::delete_channel),
         )
-        .route("/categories", post(handlers::create_category))
-        .route(
-            "/categories/:category_id",
-            patch(handlers::update_category).delete(handlers::delete_category),
-        )
 }
 
 #[cfg(test)]
@@ -32,7 +27,7 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    use crate::channels::models::{CategoryResponse, ChannelResponse, ListChannelsResponse};
+    use crate::channels::models::{ChannelResponse, ListChannelsResponse};
     use crate::config::ServerConfig;
     use crate::storage::{DynStorage, SqliteStorage};
     use crate::{app, AppState};
@@ -100,24 +95,10 @@ mod tests {
         let state = test_state().await;
         let token = authed_token(&state).await;
 
-        // Create a category
-        let req = Request::builder()
-            .method("POST")
-            .uri("/api/v1/categories")
-            .header("content-type", "application/json")
-            .header("authorization", format!("Bearer {token}"))
-            .body(Body::from(r#"{"name":"Text Channels","position":0}"#))
-            .unwrap();
-        let resp = app(state.clone()).oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
-        let cat: CategoryResponse = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(cat.name, "Text Channels");
-
-        // Create a channel in that category
+        // Create a channel with a category string
         let body = serde_json::json!({
             "name": "general",
-            "category_id": cat.id,
+            "category": "Text Channels",
             "position": 0
         });
         let req = Request::builder()
@@ -132,9 +113,9 @@ mod tests {
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let ch: ChannelResponse = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(ch.name, "general");
-        assert_eq!(ch.category_id.as_deref(), Some(cat.id.as_str()));
+        assert_eq!(ch.category.as_deref(), Some("Text Channels"));
 
-        // List channels and categories
+        // List channels
         let req = Request::builder()
             .method("GET")
             .uri("/api/v1/channels")
@@ -146,7 +127,6 @@ mod tests {
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let list: ListChannelsResponse = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(list.channels.len(), 1);
-        assert_eq!(list.categories.len(), 1);
 
         // Update the channel
         let req = Request::builder()

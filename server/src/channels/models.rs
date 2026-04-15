@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 pub struct CreateChannelRequest {
     pub name: String,
-    pub category_id: Option<String>,
+    pub category: Option<String>,
     pub position: Option<i32>,
 }
 
@@ -20,21 +20,9 @@ pub struct UpdateChannelRequest {
     /// Represented as `Option<Option<String>>` where:
     ///   - `None` = field absent from request (leave unchanged)
     ///   - `Some(None)` = field present as JSON null (clear category)
-    ///   - `Some(Some(id))` = field present as a string (change category)
+    ///   - `Some(Some(name))` = field present as a string (change category)
     #[serde(default, deserialize_with = "deserialize_optional_nullable_string")]
-    pub category_id: Option<Option<String>>,
-    pub position: Option<i32>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateCategoryRequest {
-    pub name: String,
-    pub position: Option<i32>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateCategoryRequest {
-    pub name: Option<String>,
+    pub category: Option<Option<String>>,
     pub position: Option<i32>,
 }
 
@@ -45,7 +33,7 @@ pub struct ChannelResponse {
     pub id: String,
     pub name: String,
     pub topic: Option<String>,
-    pub category_id: Option<String>,
+    pub category: Option<String>,
     pub position: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -53,18 +41,9 @@ pub struct ChannelResponse {
     pub channel_type: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CategoryResponse {
-    pub id: String,
-    pub name: String,
-    pub position: i32,
-    pub created_at: DateTime<Utc>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListChannelsResponse {
     pub channels: Vec<ChannelResponse>,
-    pub categories: Vec<CategoryResponse>,
 }
 
 // ── Conversions ────────────────────────────────────────────────────────────
@@ -75,22 +54,11 @@ impl From<crate::storage::models::Channel> for ChannelResponse {
             id: c.id,
             name: c.name,
             topic: c.topic,
-            category_id: c.category_id,
+            category: c.category,
             position: c.position,
             created_at: c.created_at,
             updated_at: c.updated_at,
             channel_type: "text".to_owned(),
-        }
-    }
-}
-
-impl From<crate::storage::models::Category> for CategoryResponse {
-    fn from(c: crate::storage::models::Category) -> Self {
-        CategoryResponse {
-            id: c.id,
-            name: c.name,
-            position: c.position,
-            created_at: c.created_at,
         }
     }
 }
