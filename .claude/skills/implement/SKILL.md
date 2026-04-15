@@ -14,11 +14,11 @@ Implement the feature: **$ARGUMENTS**
 
 1. **Find the issue.** Locate the GitHub issue for this feature:
    ```
-   gh issue list --label feature --search "$ARGUMENTS" --limit 5
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue list --label feature --search "$ARGUMENTS" --limit 5 --json number,title,url
    ```
    Or if given an issue number directly:
    ```
-   gh issue view <number>
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue view <number> --json number,title,body,url
    ```
    Read the issue body in full — it contains the requirements, design, task list, and test list.
 
@@ -31,7 +31,7 @@ Implement the feature: **$ARGUMENTS**
    - Run relevant tests and checks (`cargo test`, `cargo clippy -- -D warnings`, `pnpm test`, `pnpm lint`) to make sure nothing is broken.
    - Check off the task in the issue by editing the issue body:
      ```
-     gh issue edit <number> --body "<updated body with [x] checked>"
+       GH_PAGER= GH_PROMPT_DISABLED=1 gh issue edit <number> --body "<updated body with [x] checked>"
      ```
 
 5. **Work through the test list.** After tasks are complete, verify each test in the test list:
@@ -41,13 +41,13 @@ Implement the feature: **$ARGUMENTS**
 
 6. **Update the issue.** Mark all completed tasks and tests. If you make design decisions not covered by the issue, add them to the issue body as an "Implementation Notes" section. When fully complete, update the `status:partial` or `status:planned` label to `status:complete`:
    ```
-   gh issue edit <number> --remove-label "status:planned" --add-label "status:complete"
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue edit <number> --remove-label "status:planned" --add-label "status:complete"
    # or
-   gh issue edit <number> --remove-label "status:partial" --add-label "status:complete"
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue edit <number> --remove-label "status:partial" --add-label "status:complete"
    ```
    Then close the issue:
    ```
-   gh issue close <number> --reason completed
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue close <number> --reason completed
    ```
 
 7. **Final verification.** After all items are complete:
@@ -64,3 +64,4 @@ Implement the feature: **$ARGUMENTS**
 - **Server before client.** If the feature spans both, implement and verify the server side first, then the client.
 - **Don't gold-plate.** Implement what the issue specifies. Don't add features, refactors, or improvements beyond scope.
 - **Test as you go.** Run tests after each meaningful change, not just at the end.
+- **Use non-interactive gh.** Always run `gh issue` commands with `GH_PAGER=` and `GH_PROMPT_DISABLED=1`, and prefer `--json` for reads.

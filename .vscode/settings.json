@@ -5,6 +5,7 @@
         "command": true,
         "keyctl": true,
         "secret-tool": true,
-        "cargo check": true
+        "cargo check": true,
+        "gh": true
     }
 }
