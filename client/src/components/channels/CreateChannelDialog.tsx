@@ -1,21 +1,35 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { Category } from "../../stores/serverStore";
+
+const NEW_CATEGORY_VALUE = "__new__";
+const CHANNEL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
 interface CreateChannelDialogProps {
   categories: Category[];
   onClose: () => void;
-  onCreate: (name: string, categoryId: string | null, position: number) => Promise<void>;
+  onCreate: (
+    name: string,
+    categoryId: string | null,
+    position: number,
+    newCategoryName: string | null,
+  ) => Promise<void>;
 }
 
-const CHANNEL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-
-export function CreateChannelDialog({ categories, onClose, onCreate }: CreateChannelDialogProps) {
+export function CreateChannelDialog({
+  categories,
+  onClose,
+  onCreate,
+}: CreateChannelDialogProps) {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [position, setPosition] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const creatingCategory = categoryId === NEW_CATEGORY_VALUE;
 
   async function handleSubmit() {
     setError(null);
@@ -36,9 +50,19 @@ export function CreateChannelDialog({ categories, onClose, onCreate }: CreateCha
       return;
     }
 
+    if (creatingCategory && !newCategoryName.trim()) {
+      setError("New category name is required.");
+      return;
+    }
+
     setPending(true);
     try {
-      await onCreate(trimmed, categoryId || null, pos);
+      await onCreate(
+        trimmed,
+        creatingCategory ? null : categoryId || null,
+        pos,
+        creatingCategory ? newCategoryName.trim() : null,
+      );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -47,14 +71,14 @@ export function CreateChannelDialog({ categories, onClose, onCreate }: CreateCha
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ctp-crust/60"
-      onClick={onClose}
+      onMouseDown={onClose}
     >
       <section
         className="w-full max-w-md rounded-xl border border-ctp-overlay0 bg-ctp-mantle p-5 space-y-3"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-bold text-ctp-text">Create Channel</h3>
 
@@ -65,24 +89,40 @@ export function CreateChannelDialog({ categories, onClose, onCreate }: CreateCha
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="general"
+          autoFocus
           className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
         />
 
         <label className="block text-xs font-semibold uppercase tracking-wide text-ctp-subtext0">
-          Category (optional)
+          Category
         </label>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
         >
-          <option value="">None</option>
+          <option value="">None (uncategorized)</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>
           ))}
+          <option value={NEW_CATEGORY_VALUE}>+ New category…</option>
         </select>
+
+        {creatingCategory && (
+          <>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-ctp-subtext0">
+              New Category Name
+            </label>
+            <input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Voice Channels"
+              className="w-full rounded-lg border border-ctp-overlay0 bg-ctp-base px-3 py-2 text-sm text-ctp-text"
+            />
+          </>
+        )}
 
         <label className="block text-xs font-semibold uppercase tracking-wide text-ctp-subtext0">
           Position
@@ -115,10 +155,11 @@ export function CreateChannelDialog({ categories, onClose, onCreate }: CreateCha
             }}
             className="rounded-lg bg-ctp-blue px-4 py-2 text-sm font-bold text-ctp-crust transition hover:bg-ctp-sapphire disabled:opacity-60"
           >
-            Create
+            {pending ? "Creating…" : "Create"}
           </button>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

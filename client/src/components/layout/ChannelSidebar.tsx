@@ -3,7 +3,6 @@ import { useState } from "react";
 import { MANAGE_CHANNELS, usePermissions } from "../../hooks/usePermissions";
 import type { Category, Channel } from "../../stores/serverStore";
 import { useServerStore } from "../../stores/serverStore";
-import { CreateCategoryDialog } from "../channels/CreateCategoryDialog";
 import { CreateChannelDialog } from "../channels/CreateChannelDialog";
 import { EditCategoryDialog } from "../channels/EditCategoryDialog";
 import { EditChannelDialog } from "../channels/EditChannelDialog";
@@ -20,7 +19,6 @@ interface ChannelSidebarProps {
 type DialogState =
   | { kind: "none" }
   | { kind: "createChannel" }
-  | { kind: "createCategory" }
   | { kind: "editChannel"; channel: Channel }
   | { kind: "editCategory"; category: Category };
 
@@ -59,22 +57,13 @@ export function ChannelSidebar({
         <h2 className="text-sm font-bold uppercase tracking-wide text-ctp-subtext0">Channels</h2>
         <div className="flex items-center gap-2">
           {canManage && (
-            <div className="flex gap-1">
-              <button
-                onClick={() => setDialog({ kind: "createChannel" })}
-                title="Create Channel"
-                className="rounded-md px-1.5 py-0.5 text-xs text-ctp-subtext0 hover:bg-ctp-surface0 hover:text-ctp-blue"
-              >
-                + #
-              </button>
-              <button
-                onClick={() => setDialog({ kind: "createCategory" })}
-                title="Create Category"
-                className="rounded-md px-1.5 py-0.5 text-xs text-ctp-subtext0 hover:bg-ctp-surface0 hover:text-ctp-blue"
-              >
-                + ▸
-              </button>
-            </div>
+            <button
+              onClick={() => setDialog({ kind: "createChannel" })}
+              title="Create Channel"
+              className="rounded-md px-1.5 py-0.5 text-sm text-ctp-subtext0 hover:bg-ctp-surface0 hover:text-ctp-blue transition"
+            >
+              +
+            </button>
           )}
           <StatusIndicator status={status} />
         </div>
@@ -152,17 +141,13 @@ export function ChannelSidebar({
         <CreateChannelDialog
           categories={categories}
           onClose={() => setDialog({ kind: "none" })}
-          onCreate={async (name, categoryId, position) => {
-            await createChannel({ name, category_id: categoryId, position });
-          }}
-        />
-      )}
-
-      {dialog.kind === "createCategory" && (
-        <CreateCategoryDialog
-          onClose={() => setDialog({ kind: "none" })}
-          onCreate={async (name, position) => {
-            await createCategory({ name, position });
+          onCreate={async (name, categoryId, position, newCategoryName) => {
+            let resolvedCategoryId = categoryId;
+            if (newCategoryName) {
+              const created = await createCategory({ name: newCategoryName });
+              resolvedCategoryId = created.id;
+            }
+            await createChannel({ name, category_id: resolvedCategoryId, position });
           }}
         />
       )}

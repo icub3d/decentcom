@@ -88,7 +88,7 @@ export interface ServerStore {
   createChannel: (req: CreateChannelRequest) => Promise<void>;
   updateChannel: (channelId: string, req: UpdateChannelRequest) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
-  createCategory: (req: CreateCategoryRequest) => Promise<void>;
+  createCategory: (req: CreateCategoryRequest) => Promise<Category>;
   updateCategory: (categoryId: string, req: UpdateCategoryRequest) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   setStatus: (status: ConnectionStatus) => void;
@@ -297,8 +297,8 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
   createCategory: async (req: CreateCategoryRequest) => {
     const { address, sessionToken } = get();
-    if (!sessionToken) return;
-    await channelsApi.createCategory(address, sessionToken, req);
+    if (!sessionToken) throw new Error("Not connected");
+    return channelsApi.createCategory(address, sessionToken, req);
   },
 
   updateCategory: async (categoryId: string, req: UpdateCategoryRequest) => {

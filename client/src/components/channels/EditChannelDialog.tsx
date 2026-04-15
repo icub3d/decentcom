@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { Category, Channel } from "../../stores/serverStore";
 
@@ -63,14 +64,14 @@ export function EditChannelDialog({ channel, categories, onClose, onUpdate, onDe
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ctp-crust/60"
-      onClick={onClose}
+      onMouseDown={onClose}
     >
       <section
         className="w-full max-w-md rounded-xl border border-ctp-overlay0 bg-ctp-mantle p-5 space-y-3"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-bold text-ctp-text">Edit Channel</h3>
 
@@ -174,6 +175,7 @@ export function EditChannelDialog({ channel, categories, onClose, onUpdate, onDe
           </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
