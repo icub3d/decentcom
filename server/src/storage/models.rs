@@ -79,6 +79,8 @@ pub struct ChannelPermissionOverride {
 pub struct Member {
     pub user_id: String,
     pub pubkey: String,
+    pub display_name: Option<String>,
+    pub avatar_hash: Option<String>,
     pub joined_at: DateTime<Utc>,
 }
 

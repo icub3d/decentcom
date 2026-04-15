@@ -10,6 +10,8 @@ export interface MemberRole {
 export interface Member {
   user_id: string;
   pubkey: string;
+  display_name: string | null;
+  avatar_hash: string | null;
   joined_at: string;
   roles: MemberRole[];
 }

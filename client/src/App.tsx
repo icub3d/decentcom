@@ -22,7 +22,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, addServer, initTheme } = useAppStore();
-  const { connect, status } = useServerStore();
+  const { connect, status, address: connectedAddress } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -31,6 +31,19 @@ function App() {
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  useEffect(() => {
+    if (
+      hasIdentity &&
+      !loading &&
+      currentServerId &&
+      status === "disconnected" &&
+      !connectLoading &&
+      useAppStore.persist.hasHydrated()
+    ) {
+      handleConnect(currentServerId);
+    }
+  }, [currentServerId, hasIdentity, loading, status]);
 
   async function handleConnect(address: string) {
     setConnectLoading(true);
@@ -105,9 +118,9 @@ function App() {
 
   return (
     <>
-      {error && (
+      {(error || connectError) && (
         <div className="fixed right-4 top-4 z-20 rounded-lg border border-ctp-red bg-ctp-red/20 px-4 py-2 text-sm text-ctp-red">
-          {error}
+          {error || connectError}
         </div>
       )}
       <AppShell />

@@ -1,12 +1,13 @@
 mod channels;
 mod invites;
+mod media;
 mod membership;
 mod messages;
 mod roles;
 mod sessions;
 mod users;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -23,11 +24,12 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 pub struct SqliteStorage {
     pool: SqlitePool,
     id_gen: Mutex<Generator>,
+    media_path: Option<PathBuf>,
 }
 
 impl SqliteStorage {
     /// Open (and create, if missing) a SQLite database at the given filesystem path.
-    pub async fn open(path: &Path) -> Result<Self, StorageError> {
+    pub async fn open(path: &Path, media_path: Option<PathBuf>) -> Result<Self, StorageError> {
         let opts = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
@@ -70,6 +72,7 @@ impl SqliteStorage {
                 return Ok(Self {
                     pool: recreated_pool,
                     id_gen: Mutex::new(Generator::new()),
+                    media_path,
                 });
             }
 
@@ -79,6 +82,7 @@ impl SqliteStorage {
         Ok(Self {
             pool,
             id_gen: Mutex::new(Generator::new()),
+            media_path,
         })
     }
 
@@ -101,11 +105,16 @@ impl SqliteStorage {
         Ok(Self {
             pool,
             id_gen: Mutex::new(Generator::new()),
+            media_path: None,
         })
     }
 
     pub(crate) fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    pub(crate) fn media_dir(&self) -> Option<&Path> {
+        self.media_path.as_deref()
     }
 
     pub(crate) fn new_id(&self) -> String {

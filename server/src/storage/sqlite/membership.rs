@@ -11,6 +11,8 @@ fn row_to_member(row: sqlx::sqlite::SqliteRow) -> Result<Member, StorageError> {
     Ok(Member {
         user_id: row.try_get("user_id")?,
         pubkey: row.try_get("pubkey")?,
+        display_name: row.try_get("display_name")?,
+        avatar_hash: row.try_get("avatar_hash")?,
         joined_at: row.try_get::<DateTime<Utc>, _>("joined_at")?,
     })
 }
@@ -41,7 +43,7 @@ impl MemberStore for SqliteStorage {
             .await?;
 
         let row = sqlx::query(
-            "SELECT m.user_id, u.pubkey, m.joined_at
+            "SELECT m.user_id, u.pubkey, u.display_name, u.avatar_hash, m.joined_at
              FROM members m
              INNER JOIN users u ON u.id = m.user_id
              WHERE m.user_id = ?",
@@ -78,7 +80,7 @@ impl MemberStore for SqliteStorage {
 
     async fn list_members(&self) -> Result<Vec<Member>, StorageError> {
         let rows = sqlx::query(
-            "SELECT m.user_id, u.pubkey, m.joined_at
+            "SELECT m.user_id, u.pubkey, u.display_name, u.avatar_hash, m.joined_at
              FROM members m
              INNER JOIN users u ON u.id = m.user_id
              ORDER BY m.joined_at ASC",
@@ -91,7 +93,7 @@ impl MemberStore for SqliteStorage {
 
     async fn get_member_by_pubkey(&self, pubkey: &str) -> Result<Option<Member>, StorageError> {
         let row = sqlx::query(
-            "SELECT m.user_id, u.pubkey, m.joined_at
+            "SELECT m.user_id, u.pubkey, u.display_name, u.avatar_hash, m.joined_at
              FROM members m
              INNER JOIN users u ON u.id = m.user_id
              WHERE u.pubkey = ?",

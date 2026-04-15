@@ -6,6 +6,7 @@ mod invites;
 mod membership;
 mod messages;
 mod permissions;
+mod profiles;
 mod roles;
 mod storage;
 
@@ -47,6 +48,8 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", invites::router())
         .nest("/api/v1", membership::router())
         .nest("/api/v1", roles::router())
+        .nest("/api/v1", profiles::profile_router())
+        .nest("/api/v1", profiles::media_router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .layer(cors_layer())
@@ -61,6 +64,7 @@ fn cors_layer() -> CorsLayer {
         .allow_methods([
             Method::GET,
             Method::POST,
+            Method::PUT,
             Method::PATCH,
             Method::DELETE,
             Method::OPTIONS,
@@ -80,7 +84,13 @@ async fn init_storage(config: &ServerConfig) -> Result<DynStorage, Box<dyn std::
                 .database_path
                 .as_ref()
                 .ok_or("storage.database_path is required for sqlite")?;
-            let sqlite = SqliteStorage::open(path).await?;
+            
+            // Create media directory if configured
+            if let Some(ref media_path) = config.storage.media_path {
+                tokio::fs::create_dir_all(media_path).await?;
+            }
+
+            let sqlite = SqliteStorage::open(path, config.storage.media_path.clone()).await?;
             Ok(Arc::new(sqlite))
         }
         StorageBackendType::Postgres => Err("postgres backend is not yet implemented".into()),

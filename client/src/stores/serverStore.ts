@@ -6,6 +6,7 @@ import { ApiError, apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
 import { useMembersStore } from "./members";
+import { joinServer } from "../api/members";
 
 export interface Channel {
   id: string;
@@ -55,7 +56,8 @@ export interface GatewayEvent {
     | { user_id: string; pubkey: string; roles: string[]; joined_at: string }
     | { user_id: string; pubkey: string; left_at: string }
     | { user_id: string; pubkey: string; kicked_by: string; kicked_at: string }
-    | { pubkey: string; banned_by: string; reason?: string; banned_at: string };
+    | { pubkey: string; banned_by: string; reason?: string; banned_at: string }
+    | { user_id: string; display_name?: string | null; avatar_hash?: string | null };
   t: number;
 }
 
@@ -126,9 +128,25 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       const session = await authenticateServer(normalized);
       set({ sessionToken: session.token, sessionUserId: session.userId });
 
-      const channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
-        token: session.token,
-      });
+      let channelData;
+      try {
+        channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
+          token: session.token,
+        });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 403 && error.message.includes("membership required")) {
+          // If we are not a member, try to join. This will only succeed if the server is in Open mode
+          // or if the user is otherwise allowed to join (e.g. they joined before).
+          await joinServer(normalized, session.token);
+          // Retry channel fetch
+          channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
+            token: session.token,
+          });
+        } else {
+          throw error;
+        }
+      }
+
       const roleData = await listRoles(normalized, session.token);
       await useMembersStore.getState().fetchMembers(normalized, session.token);
 
@@ -390,6 +408,10 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           return { memberRoleIdsByUserId: next };
         }
         case "MEMBER_BAN": {
+          useMembersStore.getState().applyGatewayEvent(event);
+          return {};
+        }
+        case "MEMBER_UPDATE": {
           useMembersStore.getState().applyGatewayEvent(event);
           return {};
         }

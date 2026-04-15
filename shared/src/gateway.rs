@@ -25,6 +25,7 @@ pub enum Op {
     MemberLeave,
     MemberKick,
     MemberBan,
+    MemberUpdate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

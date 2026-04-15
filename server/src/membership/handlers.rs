@@ -90,6 +90,8 @@ async fn member_to_response(
     Ok(MemberWithRoles {
         user_id: member.user_id,
         pubkey: member.pubkey,
+        display_name: member.display_name,
+        avatar_hash: member.avatar_hash,
         joined_at: member.joined_at,
         roles,
     })
@@ -174,6 +176,8 @@ pub(super) async fn join_member(
         enforce_join_policy(&state, &auth.user_id, &user.pubkey, false).await?;
 
         state.storage.add_member(&auth.user_id).await.map_err(storage_err)?;
+
+        // Automatically assign roles
         if !state
             .storage
             .user_has_role(&auth.user_id, "everyone")
@@ -181,6 +185,12 @@ pub(super) async fn join_member(
             .map_err(internal)?
         {
             let _ = state.storage.add_member_role(&auth.user_id, "everyone").await;
+        }
+
+        // If this is the first member, make them an admin
+        let all_members = state.storage.list_members().await.map_err(internal)?;
+        if all_members.len() == 1 {
+            let _ = state.storage.add_member_role(&auth.user_id, "admin").await;
         }
 
         if let Some(msg) = event_json(

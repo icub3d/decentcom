@@ -129,6 +129,28 @@ export const useMembersStore = create<MembersStore>((set) => ({
           const payload = event.d as { pubkey: string };
           return { members: state.members.filter((member) => member.pubkey !== payload.pubkey) };
         }
+        case "MEMBER_UPDATE": {
+          const payload = event.d as {
+            user_id: string;
+            display_name?: string | null;
+            avatar_hash?: string | null;
+          };
+          return {
+            members: state.members.map((member) =>
+              member.user_id === payload.user_id
+                ? {
+                    ...member,
+                    ...(payload.display_name !== undefined
+                      ? { display_name: payload.display_name }
+                      : {}),
+                    ...(payload.avatar_hash !== undefined
+                      ? { avatar_hash: payload.avatar_hash }
+                      : {}),
+                  }
+                : member,
+            ),
+          };
+        }
         default:
           return {};
       }

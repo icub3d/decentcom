@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CreateInviteDialog } from "../invites/CreateInviteDialog";
 import { MemberList } from "../members/MemberList";
@@ -6,6 +6,7 @@ import { AllowlistEditor } from "../settings/AllowlistEditor";
 import { BanList } from "../settings/BanList";
 import { MembershipSettings } from "../settings/MembershipSettings";
 import { InviteList } from "../invites/InviteList";
+import { ProfileEditor } from "../profile/ProfileEditor";
 import { ThemeSwitcher } from "../settings/ThemeSwitcher";
 import { BAN_MEMBERS, MANAGE_INVITES, MANAGE_SERVER, usePermissions } from "../../hooks/usePermissions";
 import { useAppStore } from "../../stores/appStore";
@@ -24,7 +25,7 @@ function initials(address: string): string {
 }
 
 export function ServerSidebar({ servers, currentServerId, onSelectServer }: ServerSidebarProps) {
-  const { theme, setTheme } = useAppStore();
+  const { theme, setTheme, setCurrentServer } = useAppStore();
   const address = useServerStore((state) => state.address);
   const token = useServerStore((state) => state.sessionToken);
   const roles = useServerStore((state) => state.roles);
@@ -54,6 +55,25 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
   const [themeOpen, setThemeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        setThemeOpen(false);
+        setInviteOpen(false);
+        setMembersOpen(false);
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   async function refreshInvites() {
     if (!address || !token) {
@@ -76,7 +96,15 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
   }
 
   return (
-    <aside className="w-20 border-r border-ctp-overlay0 bg-ctp-crust p-3 flex flex-col gap-3 relative">
+    <aside ref={sidebarRef} className="w-20 border-r border-ctp-overlay0 bg-ctp-crust p-3 flex flex-col gap-3 relative">
+      <button
+        onClick={() => setCurrentServer(null)}
+        title="Add a new server"
+        className="h-12 w-12 rounded-full border-2 border-dashed border-ctp-overlay0 text-ctp-subtext1 hover:bg-ctp-surface0 hover:border-ctp-blue hover:text-ctp-blue transition flex items-center justify-center font-bold text-xl"
+      >
+        +
+      </button>
+
       {servers.map((server) => {
         const active = server.id === currentServerId;
         return (
@@ -106,9 +134,9 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
               }
             }}
             title="Invite settings"
-            className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
+            className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition flex items-center justify-center text-[10px] font-bold"
           >
-            +
+            INV
           </button>
         )}
         <button
@@ -123,6 +151,13 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
           className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
         >
           👥
+        </button>
+        <button
+          onClick={() => setProfileOpen((v) => !v)}
+          title="My profile"
+          className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
+        >
+          👤
         </button>
         <button
           onClick={() => setThemeOpen((v) => !v)}
@@ -141,6 +176,12 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
               setTheme(next);
             }}
           />
+        </div>
+      )}
+
+      {profileOpen && (
+        <div className="absolute bottom-3 left-20 z-10 w-80 pl-2">
+          <ProfileEditor />
         </div>
       )}
 

@@ -76,6 +76,21 @@ impl UserStore for SqliteStorage {
             .ok_or(StorageError::NotFound)
     }
 
+    async fn clear_avatar_hash(&self, id: &str) -> Result<User, StorageError> {
+        sqlx::query(
+            "UPDATE users
+             SET avatar_hash = NULL,
+                 updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+             WHERE id = ?",
+        )
+        .bind(id)
+        .execute(self.pool())
+        .await?;
+        self.get_user_by_id(id)
+            .await?
+            .ok_or(StorageError::NotFound)
+    }
+
     async fn list_users(&self) -> Result<Vec<User>, StorageError> {
         let rows = sqlx::query("SELECT * FROM users ORDER BY created_at ASC")
             .fetch_all(self.pool())

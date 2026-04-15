@@ -1,5 +1,6 @@
 import type { Member } from "../../api/members";
 import { MemberContextMenu } from "./MemberContextMenu";
+import { Avatar } from "../profile/Avatar";
 
 interface MemberListProps {
   members: Member[];
@@ -34,10 +35,15 @@ export function MemberList({ members, onKick, onBan }: MemberListProps) {
             className="rounded-lg border border-ctp-surface1 bg-ctp-base/70 p-2"
           >
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-sm font-semibold text-ctp-text">{truncatePubkey(member.pubkey)}</div>
-                <div className="text-xs text-ctp-subtext0">
-                  Joined {new Date(member.joined_at).toLocaleDateString()}
+              <div className="flex items-center gap-2">
+                <Avatar pubkey={member.pubkey} avatarHash={member.avatar_hash} size={28} />
+                <div>
+                  <div className="text-sm font-semibold text-ctp-text">
+                    {member.display_name ?? truncatePubkey(member.pubkey)}
+                  </div>
+                  {member.display_name && (
+                    <div className="text-xs text-ctp-subtext0">{truncatePubkey(member.pubkey)}</div>
+                  )}
                 </div>
               </div>
               <MemberContextMenu member={member} onKick={onKick} onBan={onBan} />

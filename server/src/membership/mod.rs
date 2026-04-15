@@ -87,7 +87,10 @@ mod tests {
     #[tokio::test]
     async fn join_open_mode_succeeds() {
         let state = test_state(MembershipMode::Open).await;
-        let (token, _) = authed_session(&state, 91).await;
+        let (token, _pubkey) = authed_session(&state, 91).await;
+
+        let session = state.storage.get_session(&token).await.unwrap().unwrap();
+        let user_id = session.user_id;
 
         let req = Request::builder()
             .method("POST")
@@ -95,8 +98,12 @@ mod tests {
             .header("authorization", format!("Bearer {token}"))
             .body(Body::empty())
             .unwrap();
-        let resp = app(state).oneshot(req).await.unwrap();
+        let resp = app(state.clone()).oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
+
+        // Verify the first member is an admin
+        let is_admin = state.storage.user_has_role(&user_id, "admin").await.unwrap();
+        assert!(is_admin, "first member should be granted admin role");
     }
 
     #[tokio::test]

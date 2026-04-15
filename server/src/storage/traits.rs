@@ -23,6 +23,7 @@ pub trait UserStore: Send + Sync {
         display_name: Option<&str>,
         avatar_hash: Option<&str>,
     ) -> Result<User, StorageError>;
+    async fn clear_avatar_hash(&self, id: &str) -> Result<User, StorageError>;
     async fn list_users(&self) -> Result<Vec<User>, StorageError>;
 }
 
@@ -205,6 +206,11 @@ pub trait MediaStore: Send + Sync {
         bytes: &[u8],
     ) -> Result<String, StorageError>;
     async fn get(&self, id: &str) -> Result<Option<Vec<u8>>, StorageError>;
+    /// Retrieve media bytes and MIME type by content hash.
+    async fn get_by_content_hash(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<(String, Vec<u8>)>, StorageError>;
     async fn delete(&self, id: &str) -> Result<(), StorageError>;
 }
 
@@ -217,6 +223,7 @@ pub trait Storage:
     + RoleStore
     + InviteStore
     + MemberStore
+    + MediaStore
 {
 }
 
@@ -229,5 +236,6 @@ impl<T> Storage for T where
         + RoleStore
         + InviteStore
         + MemberStore
+        + MediaStore
 {
 }
