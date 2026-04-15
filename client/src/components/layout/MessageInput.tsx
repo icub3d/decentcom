@@ -18,8 +18,8 @@ interface MessageInputProps {
 
 interface PendingFile {
   id: string;
-  file: File;
-  progress: number;
+  name: string;
+  status: "uploading" | "ready" | "error";
   attachment: Attachment | null;
   error: string | null;
 }
@@ -45,25 +45,16 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
 
       for (const file of files) {
         const id = `pending-${++nextPendingId}`;
-        const pending: PendingFile = {
-          id,
-          file,
-          progress: 0,
-          attachment: null,
-          error: null,
-        };
+        setPendingFiles((prev) => [
+          ...prev,
+          { id, name: file.name, status: "uploading", attachment: null, error: null },
+        ]);
 
-        setPendingFiles((prev) => [...prev, pending]);
-
-        uploadFile(address, sessionToken, currentChannelId, file, (pct) => {
-          setPendingFiles((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, progress: pct } : p)),
-          );
-        })
+        uploadFile(address, sessionToken, currentChannelId, file)
           .then((attachment) => {
             setPendingFiles((prev) =>
               prev.map((p) =>
-                p.id === id ? { ...p, progress: 100, attachment } : p,
+                p.id === id ? { ...p, status: "ready" as const, attachment } : p,
               ),
             );
           })
@@ -71,7 +62,7 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
             setPendingFiles((prev) =>
               prev.map((p) =>
                 p.id === id
-                  ? { ...p, error: err instanceof Error ? err.message : "upload failed" }
+                  ? { ...p, status: "error" as const, error: err instanceof Error ? err.message : "upload failed" }
                   : p,
               ),
             );
@@ -82,11 +73,10 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
   );
 
   const hasContent = value.trim().length > 0;
-  const readyAttachments = pendingFiles.filter((p) => p.attachment !== null);
-  const uploading = pendingFiles.some(
-    (p) => p.attachment === null && p.error === null,
-  );
-  const canSend = (hasContent || readyAttachments.length > 0) && !uploading;
+  const readyAttachments = pendingFiles.filter((p) => p.status === "ready");
+  const uploading = pendingFiles.some((p) => p.status === "uploading");
+  const canSend =
+    !uploading && (hasContent || readyAttachments.length > 0);
 
   async function submit() {
     if (!canSend || sending || disabled) return;
@@ -169,19 +159,19 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
               className="flex items-center gap-2 rounded-lg border border-ctp-overlay0 bg-ctp-surface0/50 px-2 py-1 text-xs"
             >
               <span className="max-w-[120px] truncate text-ctp-text">
-                {p.file.name}
+                {p.name}
               </span>
-              {p.error ? (
-                <span className="text-ctp-red">{p.error}</span>
-              ) : p.attachment ? (
+              {p.status === "error" ? (
+                <span className="text-ctp-red" title={p.error ?? ""}>{p.error}</span>
+              ) : p.status === "ready" ? (
                 <span className="text-ctp-green">✓</span>
               ) : (
-                <span className="text-ctp-subtext0">{p.progress}%</span>
+                <span className="animate-pulse text-ctp-subtext0">uploading…</span>
               )}
               <button
                 onClick={() => removePending(p.id)}
                 className="text-ctp-overlay1 hover:text-ctp-red transition"
-                aria-label={`Remove ${p.file.name}`}
+                aria-label={`Remove ${p.name}`}
               >
                 ×
               </button>
