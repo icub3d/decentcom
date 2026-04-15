@@ -23,26 +23,26 @@ export function MemberList({ members, onKick, onBan }: MemberListProps) {
   });
 
   return (
-    <section className="rounded-xl border border-ctp-overlay0 bg-ctp-mantle/90 p-3">
+    <section className="p-3">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-bold text-ctp-text">Members</h3>
         <span className="text-xs text-ctp-subtext0">{sorted.length}</span>
       </div>
-      <div className="max-h-72 space-y-2 overflow-auto pr-1">
+      <div className="space-y-2">
         {sorted.map((member) => (
           <div
             key={member.user_id}
             className="rounded-lg border border-ctp-surface1 bg-ctp-base/70 p-2"
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Avatar pubkey={member.pubkey} avatarHash={member.avatar_hash} size={28} />
-                <div>
-                  <div className="text-sm font-semibold text-ctp-text">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-ctp-text truncate">
                     {member.display_name ?? truncatePubkey(member.pubkey)}
                   </div>
                   {member.display_name && (
-                    <div className="text-xs text-ctp-subtext0">{truncatePubkey(member.pubkey)}</div>
+                    <div className="text-xs text-ctp-subtext0 truncate">{truncatePubkey(member.pubkey)}</div>
                   )}
                 </div>
               </div>

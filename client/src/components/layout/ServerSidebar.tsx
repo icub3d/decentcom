@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 
 import { CreateInviteDialog } from "../invites/CreateInviteDialog";
-import { MemberList } from "../members/MemberList";
 import { AllowlistEditor } from "../settings/AllowlistEditor";
 import { BanList } from "../settings/BanList";
 import { MembershipSettings } from "../settings/MembershipSettings";
 import { InviteList } from "../invites/InviteList";
 import { ProfileEditor } from "../profile/ProfileEditor";
 import { ThemeSwitcher } from "../settings/ThemeSwitcher";
-import { BAN_MEMBERS, MANAGE_INVITES, MANAGE_SERVER, usePermissions } from "../../hooks/usePermissions";
+import {
+  BAN_MEMBERS,
+  MANAGE_INVITES,
+  MANAGE_ROLES,
+  MANAGE_SERVER,
+  usePermissions,
+} from "../../hooks/usePermissions";
 import { useAppStore } from "../../stores/appStore";
 import { useInvitesStore } from "../../stores/invites";
 import { useMembersStore } from "../../stores/members";
@@ -19,6 +24,8 @@ interface ServerSidebarProps {
   currentServerId: string | null;
   onSelectServer: (id: string) => void;
 }
+
+type OpenPanel = null | "user-settings" | "server-settings";
 
 function initials(name: string | undefined, address: string): string {
   if (!name || name.trim() === "") {
@@ -38,10 +45,10 @@ function initials(name: string | undefined, address: string): string {
   }
   return name.slice(0, 2).toUpperCase();
 }
+
 export function ServerSidebar({ servers, currentServerId, onSelectServer }: ServerSidebarProps) {
   const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
-  // ... rest of imports
 
   const token = useServerStore((state) => state.sessionToken);
   const roles = useServerStore((state) => state.roles);
@@ -49,6 +56,8 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
   const canManageInvites = permissions.has(MANAGE_INVITES);
   const canBanMembers = permissions.has(BAN_MEMBERS);
   const canManageServer = permissions.has(MANAGE_SERVER);
+  const canManageRoles = permissions.has(MANAGE_ROLES);
+  const showServerSettings = canManageInvites || canBanMembers || canManageServer || canManageRoles;
 
   const invites = useInvitesStore((state) => state.invites);
   const loadingInvites = useInvitesStore((state) => state.loading);
@@ -56,32 +65,22 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
   const createInvite = useInvitesStore((state) => state.createInvite);
   const revokeInvite = useInvitesStore((state) => state.revokeInvite);
 
-  const members = useMembersStore((state) => state.members);
   const bans = useMembersStore((state) => state.bans);
   const allowlist = useMembersStore((state) => state.allowlist);
-  const fetchMembers = useMembersStore((state) => state.fetchMembers);
   const fetchBans = useMembersStore((state) => state.fetchBans);
   const fetchAllowlist = useMembersStore((state) => state.fetchAllowlist);
-  const kickMember = useMembersStore((state) => state.kick);
-  const banMember = useMembersStore((state) => state.ban);
   const unbanMember = useMembersStore((state) => state.unban);
   const addAllowlist = useMembersStore((state) => state.addAllowlistEntry);
   const removeAllowlist = useMembersStore((state) => state.removeAllowlistEntry);
 
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
 
   const sidebarRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
-        setThemeOpen(false);
-        setInviteOpen(false);
-        setMembersOpen(false);
-        setProfileOpen(false);
+        setOpenPanel(null);
       }
     }
 
@@ -91,18 +90,17 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
     };
   }, []);
 
-  async function refreshInvites() {
-    if (!address || !token) {
-      return;
-    }
-    await fetchInvites(address, token);
+  function togglePanel(panel: OpenPanel) {
+    setOpenPanel((prev) => (prev === panel ? null : panel));
   }
 
-  async function refreshMembersPanel() {
+  async function refreshServerSettings() {
     if (!address || !token) {
       return;
     }
-    await fetchMembers(address, token);
+    if (canManageInvites) {
+      await fetchInvites(address, token);
+    }
     if (canBanMembers) {
       await fetchBans(address, token);
     }
@@ -152,116 +150,83 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
         );
       })}
 
-      <div className="mt-auto">
-        {canManageInvites && (
-          <button
-            onClick={() => {
-              const next = !inviteOpen;
-              setInviteOpen(next);
-              if (next) {
-                void refreshInvites();
-              }
-            }}
-            title="Invite settings"
-            className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition flex items-center justify-center text-[10px] font-bold"
-          >
-            INV
-          </button>
-        )}
+      <div className="mt-auto flex flex-col gap-3">
         <button
-          onClick={() => {
-            const next = !membersOpen;
-            setMembersOpen(next);
-            if (next) {
-              void refreshMembersPanel();
-            }
-          }}
-          title="Membership"
-          className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
-        >
-          👥
-        </button>
-        <button
-          onClick={() => setProfileOpen((v) => !v)}
-          title="My profile"
-          className="mb-3 h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
+          onClick={() => togglePanel("user-settings")}
+          title="User settings"
+          className={`h-12 w-12 rounded-xl transition flex items-center justify-center ${
+            openPanel === "user-settings"
+              ? "bg-ctp-blue text-ctp-crust"
+              : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
+          }`}
         >
           👤
         </button>
-        <button
-          onClick={() => setThemeOpen((v) => !v)}
-          title="Theme settings"
-          className="h-12 w-12 rounded-xl bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1 transition"
-        >
-          ⚙
-        </button>
+        {showServerSettings && (
+          <button
+            onClick={() => {
+              const willOpen = openPanel !== "server-settings";
+              togglePanel("server-settings");
+              if (willOpen) {
+                void refreshServerSettings();
+              }
+            }}
+            title="Server settings"
+            className={`h-12 w-12 rounded-xl transition flex items-center justify-center ${
+              openPanel === "server-settings"
+                ? "bg-ctp-blue text-ctp-crust"
+                : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
+            }`}
+          >
+            ⚙
+          </button>
+        )}
       </div>
 
-      {themeOpen && (
-        <div className="absolute bottom-3 left-20 z-10 w-56 pl-2">
-          <ThemeSwitcher
-            theme={theme}
-            onThemeSelect={(next) => {
-              setTheme(next);
-            }}
-          />
-        </div>
-      )}
-
-      {profileOpen && (
+      {openPanel === "user-settings" && (
         <div className="absolute bottom-3 left-20 z-10 w-80 pl-2">
-          <ProfileEditor />
-        </div>
-      )}
-
-      {inviteOpen && canManageInvites && (
-        <div className="absolute bottom-3 left-20 z-10 w-104 pl-2">
           <div className="grid gap-3">
-            <CreateInviteDialog
-              roles={roles}
-              onCreate={async (input) => {
-                if (!address || !token) {
-                  throw new Error("Not connected");
-                }
-                const created = await createInvite(address, token, input);
-                await refreshInvites();
-                return created;
-              }}
-            />
-            <InviteList
-              invites={invites}
-              loading={loadingInvites}
-              onRevoke={async (code) => {
-                if (!address || !token) {
-                  throw new Error("Not connected");
-                }
-                await revokeInvite(address, token, code);
-                await refreshInvites();
+            <ProfileEditor />
+            <ThemeSwitcher
+              theme={theme}
+              onThemeSelect={(next) => {
+                setTheme(next);
               }}
             />
           </div>
         </div>
       )}
 
-      {membersOpen && (
-        <div className="absolute bottom-3 left-20 z-10 w-lg pl-2">
+      {openPanel === "server-settings" && showServerSettings && (
+        <div className="absolute bottom-3 left-20 z-10 w-104 pl-2">
           <div className="grid gap-3">
             <MembershipSettings mode="server-config" />
-            <MemberList
-              members={members}
-              onKick={async (pubkey) => {
-                if (!address || !token) {
-                  throw new Error("Not connected");
-                }
-                await kickMember(address, token, pubkey);
-              }}
-              onBan={async (pubkey, reason) => {
-                if (!address || !token) {
-                  throw new Error("Not connected");
-                }
-                await banMember(address, token, pubkey, reason);
-              }}
-            />
+            {canManageInvites && (
+              <>
+                <CreateInviteDialog
+                  roles={roles}
+                  onCreate={async (input) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    const created = await createInvite(address, token, input);
+                    await fetchInvites(address, token);
+                    return created;
+                  }}
+                />
+                <InviteList
+                  invites={invites}
+                  loading={loadingInvites}
+                  onRevoke={async (code) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    await revokeInvite(address, token, code);
+                    await fetchInvites(address, token);
+                  }}
+                />
+              </>
+            )}
             {canBanMembers && (
               <BanList
                 bans={bans}
