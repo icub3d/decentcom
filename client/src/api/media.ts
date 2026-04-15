@@ -41,7 +41,11 @@ export async function uploadFile(
     throw new Error(message);
   }
 
-  return (await response.json()) as Attachment;
+  const data = (await response.json()) as Attachment[];
+  if (!data.length) {
+    throw new Error("upload returned no attachments");
+  }
+  return data[0];
 }
 
 export function mediaUrl(baseUrl: string, hash: string): string {
