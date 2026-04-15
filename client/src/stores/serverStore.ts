@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { CreateCategoryRequest, CreateChannelRequest, UpdateCategoryRequest, UpdateChannelRequest } from "../api/channels";
+import * as channelsApi from "../api/channels";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
 import { ApiError, apiRequest } from "../services/api";
@@ -83,6 +85,12 @@ export interface ServerStore {
   setCurrentChannel: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   loadMoreMessages: (channelId: string) => Promise<void>;
+  createChannel: (req: CreateChannelRequest) => Promise<void>;
+  updateChannel: (channelId: string, req: UpdateChannelRequest) => Promise<void>;
+  deleteChannel: (channelId: string) => Promise<void>;
+  createCategory: (req: CreateCategoryRequest) => Promise<void>;
+  updateCategory: (categoryId: string, req: UpdateCategoryRequest) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
   setStatus: (status: ConnectionStatus) => void;
   handleGatewayEvent: (event: GatewayEvent) => void;
 }
@@ -260,6 +268,42 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         [channelId]: page.has_more,
       },
     }));
+  },
+
+  createChannel: async (req: CreateChannelRequest) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.createChannel(address, sessionToken, req);
+  },
+
+  updateChannel: async (channelId: string, req: UpdateChannelRequest) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.updateChannel(address, sessionToken, channelId, req);
+  },
+
+  deleteChannel: async (channelId: string) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.deleteChannel(address, sessionToken, channelId);
+  },
+
+  createCategory: async (req: CreateCategoryRequest) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.createCategory(address, sessionToken, req);
+  },
+
+  updateCategory: async (categoryId: string, req: UpdateCategoryRequest) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.updateCategory(address, sessionToken, categoryId, req);
+  },
+
+  deleteCategory: async (categoryId: string) => {
+    const { address, sessionToken } = get();
+    if (!sessionToken) return;
+    await channelsApi.deleteCategory(address, sessionToken, categoryId);
   },
 
   setStatus: (status) => set({ status }),
