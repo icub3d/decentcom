@@ -77,5 +77,6 @@ Follow this process for each feature:
 
 The following Claude Code skills are available and should be used where appropriate:
 
-- **`/feature`** — create a feature document.
-- **`/implement`** — implement a feature.
+- **`/feature`** — create a GitHub issue for a new feature.
+- **`/implement`** — implement a feature from its GitHub issue.
+- **`/verify`** — verify a feature's implementation against its GitHub issue.

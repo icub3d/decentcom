@@ -1,14 +1,14 @@
 ---
 name: feature
-description: Create a feature document in docs/features/ that describes a new feature's design, scope, and acceptance criteria. Use before implementing a feature.
+description: Create a GitHub issue for a new feature that describes its design, scope, and acceptance criteria. Use before implementing a feature.
 disable-model-invocation: true
-allowed-tools: Read Grep Glob Write Edit Bash(ls *)
+allowed-tools: Read Grep Glob Bash(ls * gh issue * gh label *)
 argument-hint: [feature-name]
 ---
 
-# Create Feature Document
+# Create Feature Issue
 
-Create a feature document for: **$ARGUMENTS**
+Create a GitHub issue for the feature: **$ARGUMENTS**
 
 ## Process
 
@@ -16,11 +16,30 @@ Create a feature document for: **$ARGUMENTS**
 
 2. **Research the codebase.** Look at existing code to understand what already exists, what can be reused, and where the feature would live.
 
-3. **Write the feature document.** Create `docs/features/$0.md` using the structure below.
+3. **Check for an existing issue.** Run:
+   ```
+   gh issue list --label feature --search "$ARGUMENTS" --limit 10
+   ```
+   If an issue already exists for this feature, update it instead of creating a new one.
 
-4. **Present the document** to the user for review. Do not start implementation — that is a separate step.
+4. **Determine the phase label.** Based on `docs/features/FEATURES.md` or the feature's dependencies, pick the right phase:
+   - `phase:1-foundation`
+   - `phase:2-core-ux`
+   - `phase:3-media-voice`
+   - `phase:4-operations`
 
-## Feature Document Structure
+5. **Draft the issue body** using the structure below.
+
+6. **Create the issue:**
+   ```
+   gh issue create --title "Feature: <Title>" \
+     --label "feature,<phase-label>,status:planned" \
+     --body "<body>"
+   ```
+
+7. **Present the issue URL** to the user for review. Do not start implementation — that is a separate step.
+
+## Issue Body Structure
 
 ```markdown
 # Feature: <Title>
@@ -29,7 +48,7 @@ Create a feature document for: **$ARGUMENTS**
 One-paragraph description of what this feature does and why it matters.
 
 ## Background
-Context from the design docs or codebase that motivates this feature. Link to relevant design documents.
+Context from the design docs or codebase that motivates this feature.
 
 ## Requirements
 Concrete, testable requirements. Use a checklist:
@@ -63,7 +82,7 @@ Anything unresolved that needs a decision before or during implementation.
 
 ## Guidelines
 
-- Keep the document focused and actionable. This is a blueprint for implementation, not a design essay.
+- Keep the issue focused and actionable. This is a blueprint for implementation, not a design essay.
 - Reference specific files and modules when describing where changes go.
 - The implementation plan should be ordered so each step builds on the last.
 - If the feature spans both server and client, organize the plan so one side can be built and tested before the other (typically server first).

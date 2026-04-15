@@ -50,7 +50,9 @@ impl MemberStore for SqliteStorage {
         .fetch_optional(self.pool())
         .await?;
 
-        row.map(row_to_member).transpose()?.ok_or(StorageError::NotFound)
+        row.map(row_to_member)
+            .transpose()?
+            .ok_or(StorageError::NotFound)
     }
 
     async fn remove_member(&self, user_id: &str) -> Result<(), StorageError> {
@@ -114,12 +116,15 @@ impl MemberStore for SqliteStorage {
             .execute(self.pool())
             .await?;
 
-        let row = sqlx::query("SELECT pubkey, banned_by, reason, banned_at FROM bans WHERE pubkey = ?")
-            .bind(pubkey)
-            .fetch_optional(self.pool())
-            .await?;
+        let row =
+            sqlx::query("SELECT pubkey, banned_by, reason, banned_at FROM bans WHERE pubkey = ?")
+                .bind(pubkey)
+                .fetch_optional(self.pool())
+                .await?;
 
-        row.map(row_to_ban).transpose()?.ok_or(StorageError::NotFound)
+        row.map(row_to_ban)
+            .transpose()?
+            .ok_or(StorageError::NotFound)
     }
 
     async fn remove_ban(&self, pubkey: &str) -> Result<(), StorageError> {
@@ -144,9 +149,11 @@ impl MemberStore for SqliteStorage {
     }
 
     async fn list_bans(&self) -> Result<Vec<Ban>, StorageError> {
-        let rows = sqlx::query("SELECT pubkey, banned_by, reason, banned_at FROM bans ORDER BY banned_at DESC")
-            .fetch_all(self.pool())
-            .await?;
+        let rows = sqlx::query(
+            "SELECT pubkey, banned_by, reason, banned_at FROM bans ORDER BY banned_at DESC",
+        )
+        .fetch_all(self.pool())
+        .await?;
 
         rows.into_iter().map(row_to_ban).collect()
     }
@@ -194,9 +201,10 @@ impl MemberStore for SqliteStorage {
     }
 
     async fn list_allowlist_entries(&self) -> Result<Vec<AllowlistEntry>, StorageError> {
-        let rows = sqlx::query("SELECT pubkey, added_by, added_at FROM allowlist ORDER BY added_at ASC")
-            .fetch_all(self.pool())
-            .await?;
+        let rows =
+            sqlx::query("SELECT pubkey, added_by, added_at FROM allowlist ORDER BY added_at ASC")
+                .fetch_all(self.pool())
+                .await?;
 
         rows.into_iter().map(row_to_allowlist_entry).collect()
     }

@@ -138,7 +138,11 @@ impl RoleStore for SqliteStorage {
         Ok(())
     }
 
-    async fn add_member_role(&self, user_id: &str, role_id: &str) -> Result<MemberRole, StorageError> {
+    async fn add_member_role(
+        &self,
+        user_id: &str,
+        role_id: &str,
+    ) -> Result<MemberRole, StorageError> {
         sqlx::query("INSERT INTO member_roles (user_id, role_id) VALUES (?, ?)")
             .bind(user_id)
             .bind(role_id)
@@ -252,12 +256,13 @@ impl RoleStore for SqliteStorage {
         channel_id: &str,
         role_id: &str,
     ) -> Result<(), StorageError> {
-        let result =
-            sqlx::query("DELETE FROM channel_permission_overrides WHERE channel_id = ? AND role_id = ?")
-                .bind(channel_id)
-                .bind(role_id)
-                .execute(self.pool())
-                .await?;
+        let result = sqlx::query(
+            "DELETE FROM channel_permission_overrides WHERE channel_id = ? AND role_id = ?",
+        )
+        .bind(channel_id)
+        .bind(role_id)
+        .execute(self.pool())
+        .await?;
 
         if result.rows_affected() == 0 {
             return Err(StorageError::NotFound);
