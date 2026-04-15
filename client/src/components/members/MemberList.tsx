@@ -1,11 +1,16 @@
 import type { Member } from "../../api/members";
+import type { Role } from "../../api/roles";
 import { MemberContextMenu } from "./MemberContextMenu";
 import { Avatar } from "../profile/Avatar";
 
 interface MemberListProps {
   members: Member[];
+  roles: Role[];
+  memberRoleIdsByUserId: Record<string, string[]>;
   onKick: (pubkey: string) => Promise<void>;
   onBan: (pubkey: string, reason?: string) => Promise<void>;
+  onAssignRole: (pubkey: string, roleId: string) => Promise<void>;
+  onRemoveRole: (pubkey: string, roleId: string) => Promise<void>;
 }
 
 function truncatePubkey(pubkey: string): string {
@@ -15,7 +20,15 @@ function truncatePubkey(pubkey: string): string {
   return `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`;
 }
 
-export function MemberList({ members, onKick, onBan }: MemberListProps) {
+export function MemberList({
+  members,
+  roles,
+  memberRoleIdsByUserId,
+  onKick,
+  onBan,
+  onAssignRole,
+  onRemoveRole,
+}: MemberListProps) {
   const sorted = [...members].sort((a, b) => {
     const roleA = a.roles[0]?.position ?? 0;
     const roleB = b.roles[0]?.position ?? 0;
@@ -46,7 +59,15 @@ export function MemberList({ members, onKick, onBan }: MemberListProps) {
                   )}
                 </div>
               </div>
-              <MemberContextMenu member={member} onKick={onKick} onBan={onBan} />
+              <MemberContextMenu
+                member={member}
+                roles={roles}
+                memberRoleIds={memberRoleIdsByUserId[member.user_id] ?? []}
+                onKick={onKick}
+                onBan={onBan}
+                onAssignRole={onAssignRole}
+                onRemoveRole={onRemoveRole}
+              />
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
               {member.roles.map((role) => (
