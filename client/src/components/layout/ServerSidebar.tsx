@@ -7,6 +7,7 @@ import { MembershipSettings } from "../settings/MembershipSettings";
 import { InviteList } from "../invites/InviteList";
 import { ProfileEditor } from "../profile/ProfileEditor";
 import { ThemeSwitcher } from "../settings/ThemeSwitcher";
+import { AccountSwitcher } from "../accounts/AccountSwitcher";
 import {
   BAN_MEMBERS,
   MANAGE_INVITES,
@@ -23,6 +24,8 @@ interface ServerSidebarProps {
   servers: Array<{ id: string; address: string; name?: string }>;
   currentServerId: string | null;
   onSelectServer: (id: string) => void;
+  onSwitchAccount: (pubkey: string) => void;
+  onAddAccount: () => void;
 }
 
 type OpenPanel = null | "user-settings" | "server-settings";
@@ -46,7 +49,7 @@ function initials(name: string | undefined, address: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function ServerSidebar({ servers, currentServerId, onSelectServer }: ServerSidebarProps) {
+export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwitchAccount, onAddAccount }: ServerSidebarProps) {
   const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
 
@@ -186,6 +189,10 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer }: Serv
       {openPanel === "user-settings" && (
         <div className="absolute bottom-3 left-20 z-10 w-80 pl-2">
           <div className="grid gap-3">
+            <AccountSwitcher
+              onSwitchAccount={onSwitchAccount}
+              onAddAccount={onAddAccount}
+            />
             <ProfileEditor />
             <ThemeSwitcher
               theme={theme}

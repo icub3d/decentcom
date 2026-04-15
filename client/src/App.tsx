@@ -8,7 +8,8 @@ import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
 import { authenticateServer } from "./services/auth";
 import { getServerInfo } from "./api/server";
-import { useAppStore } from "./stores/appStore";
+import { useAppStore, switchAppStoreAccount } from "./stores/appStore";
+import { useIdentityStore } from "./stores/identityStore";
 import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
 import { Setup } from "./pages/Setup";
@@ -24,11 +25,15 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, addServer, initTheme } = useAppStore();
-  const { connect, status } = useServerStore();
+  const { connect, disconnect, status } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [addingAccount, setAddingAccount] = useState(false);
+
+  const activeAccount = useIdentityStore((s) => s.activeAccount);
+  const setActiveAccount = useIdentityStore((s) => s.setActiveAccount);
 
   useEffect(() => {
     initTheme();
@@ -45,6 +50,7 @@ function App() {
     if (
       hasIdentity &&
       !loading &&
+      !addingAccount &&
       currentServerId &&
       status === "disconnected" &&
       !connectLoading &&
@@ -52,7 +58,7 @@ function App() {
     ) {
       handleConnect(currentServerId);
     }
-  }, [currentServerId, hasIdentity, loading, status]);
+  }, [currentServerId, hasIdentity, loading, status, addingAccount]);
 
   async function handleConnect(address: string) {
     setConnectLoading(true);
@@ -85,6 +91,27 @@ function App() {
     }
   }
 
+  async function handleSwitchAccount(pubkey: string) {
+    // Disconnect current session, switch backend active key, reload store.
+    disconnect();
+    await setActiveAccount(pubkey);
+    switchAppStoreAccount(pubkey);
+    await refresh();
+  }
+
+  function handleAddAccount() {
+    setAddingAccount(true);
+  }
+
+  async function handleAddAccountComplete() {
+    setAddingAccount(false);
+    await refresh();
+    // The newly generated/imported account is now active.
+    if (activeAccount) {
+      switchAppStoreAccount(activeAccount);
+    }
+  }
+
   let content;
   if (loading && hasIdentity === null) {
     content = (
@@ -92,13 +119,14 @@ function App() {
         <div className="animate-pulse">Loading identity...</div>
       </div>
     );
-  } else if (!hasIdentity) {
+  } else if (!hasIdentity || addingAccount) {
     content = (
       <main className="flex-1 flex items-center justify-center bg-ctp-base p-4 text-ctp-text">
         <Setup
           onGenerate={generateIdentity}
           onImport={importIdentity}
-          onComplete={refresh}
+          onComplete={() => void handleAddAccountComplete()}
+          onCancel={addingAccount ? () => setAddingAccount(false) : undefined}
         />
       </main>
     );
@@ -134,7 +162,10 @@ function App() {
             {error || connectError}
           </div>
         )}
-        <AppShell />
+        <AppShell
+          onSwitchAccount={handleSwitchAccount}
+          onAddAccount={handleAddAccount}
+        />
       </>
     );
   }

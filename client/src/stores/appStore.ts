@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 import { applyTheme, defaultTheme } from "../theme/apply";
 import type { ThemeName } from "../theme/types";
@@ -27,6 +27,15 @@ function normalizeAddress(address: string): string {
     return trimmed;
   }
   return `http://${trimmed}`;
+}
+
+/** Get the storage key namespaced by public key, or a default key. */
+function getStorageKey(): string {
+  const pubkey = localStorage.getItem("decentcom-active-pubkey");
+  if (pubkey) {
+    return `decentcom-app-storage-${pubkey}`;
+  }
+  return "decentcom-app-storage";
 }
 
 export const useAppStore = create<AppStore>()(
@@ -81,7 +90,38 @@ export const useAppStore = create<AppStore>()(
       },
     }),
     {
-      name: "decentcom-app-storage",
+      name: getStorageKey(),
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 );
+
+/**
+ * Re-initialize the app store with a new storage key for the given pubkey.
+ * Call this when switching accounts to load that account's persisted state.
+ */
+export function switchAppStoreAccount(pubkey: string | null) {
+  localStorage.setItem("decentcom-active-pubkey", pubkey ?? "");
+  // Rehydrate from the new storage key.
+  const key = pubkey ? `decentcom-app-storage-${pubkey}` : "decentcom-app-storage";
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) {
+        useAppStore.setState(parsed.state);
+      }
+    } catch {
+      // corrupt storage — start fresh
+    }
+  } else {
+    // No persisted state for this account — reset to defaults.
+    useAppStore.setState({
+      currentServerId: null,
+      servers: {},
+      theme: defaultTheme(),
+    });
+  }
+  // Update the persist name so future writes go to the right key.
+  useAppStore.persist.setOptions({ name: key });
+}
