@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../stores/appStore";
+import { useMembersStore } from "../../stores/members";
 import { useServerStore } from "../../stores/serverStore";
+import { MemberList } from "../members/MemberList";
 import { ChannelSidebar } from "./ChannelSidebar";
 import { MessageView } from "./MessageView";
 import { ServerSidebar } from "./ServerSidebar";
@@ -9,6 +11,8 @@ import { ServerSidebar } from "./ServerSidebar";
 export function AppShell() {
   const { currentServerId, servers, setCurrentServer } = useAppStore();
   const {
+    address,
+    sessionToken,
     channels,
     currentChannelId,
     messages,
@@ -18,6 +22,36 @@ export function AppShell() {
     sendMessage,
     loadMoreMessages,
   } = useServerStore();
+
+  const members = useMembersStore((state) => state.members);
+  const fetchMembers = useMembersStore((state) => state.fetchMembers);
+  const kickMember = useMembersStore((state) => state.kick);
+  const banMember = useMembersStore((state) => state.ban);
+
+  const [memberPanelOpen, setMemberPanelOpen] = useState(true);
+
+  // Fetch members when connected to a server
+  useEffect(() => {
+    if (address && sessionToken && status === "connected") {
+      void fetchMembers(address, sessionToken);
+    }
+  }, [address, sessionToken, status, fetchMembers]);
+
+  const handleKick = useCallback(
+    async (pubkey: string) => {
+      if (!address || !sessionToken) throw new Error("Not connected");
+      await kickMember(address, sessionToken, pubkey);
+    },
+    [address, sessionToken, kickMember],
+  );
+
+  const handleBan = useCallback(
+    async (pubkey: string, reason?: string) => {
+      if (!address || !sessionToken) throw new Error("Not connected");
+      await banMember(address, sessionToken, pubkey, reason);
+    },
+    [address, sessionToken, banMember],
+  );
 
   const serverList = useMemo(() => Object.values(servers), [servers]);
   const currentChannel = channels.find((ch) => ch.id === currentChannelId) ?? null;
@@ -48,7 +82,14 @@ export function AppShell() {
           currentChannelId ? loadMoreMessages(currentChannelId) : Promise.resolve()
         }
         onSend={sendMessage}
+        memberPanelOpen={memberPanelOpen}
+        onToggleMemberPanel={() => setMemberPanelOpen((v) => !v)}
       />
+      {memberPanelOpen && currentServerId && status === "connected" && (
+        <aside className="w-64 border-l border-ctp-overlay0 bg-ctp-mantle overflow-y-auto shrink-0">
+          <MemberList members={members} onKick={handleKick} onBan={handleBan} />
+        </aside>
+      )}
     </main>
   );
 }
