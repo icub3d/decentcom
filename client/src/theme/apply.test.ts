@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { CATPPUCCIN } from "./colors";
-import { applyTheme, loadTheme, saveTheme } from "./apply";
+import { applyTheme, defaultTheme } from "./apply";
 import { CTP_COLOR_KEYS, THEME_NAMES } from "./types";
 
 describe("theme apply", () => {
@@ -50,17 +50,7 @@ describe("theme apply", () => {
     }
   });
 
-  it("loadTheme defaults to mocha and saveTheme persists flavors", () => {
-    expect(loadTheme()).toBe("mocha");
-
-    for (const name of THEME_NAMES) {
-      saveTheme(name);
-      expect(loadTheme()).toBe(name);
-    }
-  });
-
-  it("loadTheme ignores unknown values", () => {
-    localStorage.setItem("decentcom-theme", "weird-theme");
-    expect(loadTheme()).toBe("mocha");
+  it("defaultTheme returns mocha", () => {
+    expect(defaultTheme()).toBe("mocha");
   });
 });

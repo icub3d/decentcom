@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { applyTheme, defaultTheme, loadTheme, saveTheme } from "../theme/apply";
+import { applyTheme, defaultTheme } from "../theme/apply";
 import type { ThemeName } from "../theme/types";
 
 export interface ServerConnection {
@@ -73,13 +73,11 @@ export const useAppStore = create<AppStore>()(
       setCurrentServer: (id) => set({ currentServerId: id }),
       setTheme: (theme) => {
         applyTheme(theme);
-        saveTheme(theme);
         set({ theme });
       },
       initTheme: () => {
-        const theme = loadTheme();
+        const theme = get().theme;
         applyTheme(theme);
-        set({ theme });
       },
     }),
     {

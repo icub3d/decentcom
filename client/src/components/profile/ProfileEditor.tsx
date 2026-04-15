@@ -9,6 +9,7 @@ export function ProfileEditor() {
   const token = useServerStore((s) => s.sessionToken);
   const userId = useServerStore((s) => s.sessionUserId);
   const member = useMembersStore((s) => s.members.find((m) => m.user_id === userId));
+  const updateMemberProfile = useMembersStore((s) => s.updateMemberProfile);
 
   const [displayName, setDisplayName] = useState(member?.display_name ?? "");
   const [saving, setSaving] = useState(false);
@@ -18,14 +19,17 @@ export function ProfileEditor() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleSaveDisplayName() {
-    if (!token) return;
+    if (!token || !userId) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
     try {
       const trimmed = displayName.trim();
-      await updateProfile(address, token, {
+      const updated = await updateProfile(address, token, {
         display_name: trimmed || undefined,
+      });
+      updateMemberProfile(userId, {
+        display_name: updated.display_name ?? null,
       });
       setSuccess("Display name updated");
     } catch (err) {
@@ -36,12 +40,15 @@ export function ProfileEditor() {
   }
 
   async function handleUploadAvatar(file: File) {
-    if (!token) return;
+    if (!token || !userId) return;
     setUploading(true);
     setError(null);
     setSuccess(null);
     try {
-      await uploadAvatar(address, token, file);
+      const updated = await uploadAvatar(address, token, file);
+      updateMemberProfile(userId, {
+        avatar_hash: updated.avatar_hash ?? null,
+      });
       setSuccess("Avatar updated");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -51,12 +58,13 @@ export function ProfileEditor() {
   }
 
   async function handleDeleteAvatar() {
-    if (!token) return;
+    if (!token || !userId) return;
     setUploading(true);
     setError(null);
     setSuccess(null);
     try {
       await deleteAvatar(address, token);
+      updateMemberProfile(userId, { avatar_hash: null });
       setSuccess("Avatar removed");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

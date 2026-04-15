@@ -28,6 +28,10 @@ interface MembersStore {
   unban: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   addAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   removeAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
+  updateMemberProfile: (
+    userId: string,
+    patch: { display_name?: string | null; avatar_hash?: string | null },
+  ) => void;
   applyGatewayEvent: (event: { op: string; d: unknown }) => void;
   clear: () => void;
 }
@@ -97,6 +101,20 @@ export const useMembersStore = create<MembersStore>((set) => ({
   removeAllowlistEntry: async (baseUrl, token, pubkey) => {
     await removeAllowlist(baseUrl, token, pubkey);
     set((state) => ({ allowlist: state.allowlist.filter((entry) => entry.pubkey !== pubkey) }));
+  },
+
+  updateMemberProfile: (userId, patch) => {
+    set((state) => ({
+      members: state.members.map((member) =>
+        member.user_id === userId
+          ? {
+              ...member,
+              ...(patch.display_name !== undefined ? { display_name: patch.display_name } : {}),
+              ...(patch.avatar_hash !== undefined ? { avatar_hash: patch.avatar_hash } : {}),
+            }
+          : member,
+      ),
+    }));
   },
 
   applyGatewayEvent: (event) => {
