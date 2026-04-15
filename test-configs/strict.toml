@@ -1,0 +1,30 @@
+[server]
+name = "Strict Server"
+description = "Allowlist only, restricted features"
+
+[network]
+bind_address = "127.0.0.1:8083"
+
+[storage]
+backend = "sqlite"
+database_path = "test-configs/strict.db"
+media_path = "test-configs/media-strict"
+
+[membership]
+mode = "allowlist"
+
+[features]
+voice_channels = false
+video = false
+screen_share = false
+file_uploads = false
+emoji_reactions = true
+message_threads = true
+message_search = false
+
+[auth]
+session_ttl_seconds = 86400
+
+[gateway]
+heartbeat_interval_ms = 30000
+heartbeat_ack_timeout_ms = 10000

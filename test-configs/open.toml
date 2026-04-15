@@ -1,0 +1,30 @@
+[server]
+name = "Open Server"
+description = "A server open to everyone"
+
+[network]
+bind_address = "127.0.0.1:8081"
+
+[storage]
+backend = "sqlite"
+database_path = "test-configs/open.db"
+media_path = "test-configs/media-open"
+
+[membership]
+mode = "open"
+
+[features]
+voice_channels = true
+video = true
+screen_share = true
+file_uploads = true
+emoji_reactions = true
+message_threads = true
+message_search = true
+
+[auth]
+session_ttl_seconds = 86400
+
+[gateway]
+heartbeat_interval_ms = 30000
+heartbeat_ack_timeout_ms = 10000

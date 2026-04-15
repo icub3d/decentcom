@@ -54,6 +54,25 @@ decentcom/
 └── README.md
 ```
 
+## Development
+
+The fastest way to develop both the client and server is using [Overmind](https://github.com/DarthSim/overmind). We have a `Procfile` configured to run three different test servers simultaneously:
+
+- **Open Server** (port 8081): Open membership mode.
+- **Private Server** (port 8082): Invite-only mode.
+- **Strict Server** (port 8083): Allowlist mode, restricted features.
+- **Client**: The Tauri dev server with hot reload.
+
+To start everything:
+```bash
+overmind start
+```
+
+### Tips
+- **Inspect one server**: `overmind connect private`
+- **Restart one node**: `overmind restart open`
+- **Stop everything**: Press `Ctrl+C` in the overmind session.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

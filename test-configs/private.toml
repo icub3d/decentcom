@@ -1,0 +1,30 @@
+[server]
+name = "Private Server"
+description = "Invitation only"
+
+[network]
+bind_address = "127.0.0.1:8082"
+
+[storage]
+backend = "sqlite"
+database_path = "test-configs/private.db"
+media_path = "test-configs/media-private"
+
+[membership]
+mode = "invite_only"
+
+[features]
+voice_channels = true
+video = true
+screen_share = true
+file_uploads = true
+emoji_reactions = true
+message_threads = true
+message_search = true
+
+[auth]
+session_ttl_seconds = 86400
+
+[gateway]
+heartbeat_interval_ms = 30000
+heartbeat_ack_timeout_ms = 10000
