@@ -15,6 +15,7 @@ describe("MessageItem", () => {
           created_at: new Date().toISOString(),
           edited_at: new Date().toISOString(),
           deleted: false,
+          attachments: [],
         }}
       />,
     );
@@ -35,6 +36,7 @@ describe("MessageItem", () => {
           created_at: new Date().toISOString(),
           edited_at: null,
           deleted: true,
+          attachments: [],
         }}
       />,
     );
