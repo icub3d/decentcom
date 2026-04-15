@@ -34,7 +34,7 @@ mod tests {
     use shared::auth::{AuthMeResponse, ChallengeResponse, VerifyResponse};
     use tower::ServiceExt;
 
-    use crate::config::ServerConfig;
+    use crate::config::{MembershipMode, ServerConfig};
     use crate::storage::{DynStorage, SqliteStorage};
     use crate::{app, AppState};
 
@@ -336,5 +336,38 @@ mod tests {
             .unwrap();
         let me_resp = router.oneshot(me_req).await.unwrap();
         assert_eq!(me_resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn registration_restricted_in_closed_mode() {
+        let mut cfg = ServerConfig::default();
+        cfg.membership.mode = MembershipMode::Closed;
+        let storage: DynStorage = Arc::new(SqliteStorage::in_memory().await.unwrap());
+        let state = AppState {
+            config: Arc::new(cfg),
+            storage,
+            challenge_store: super::challenge_store(),
+            gateway: crate::gateway::gateway_handle(),
+        };
+        let router = app(state);
+
+        let key = SigningKey::from_bytes(&[99u8; 32]);
+        let pubkey = public_key_b58(&key);
+
+        let (_, body) = request_challenge(&router, &pubkey).await;
+        let challenge: ChallengeResponse = serde_json::from_str(&body).unwrap();
+        let sig = key.sign(challenge.challenge.as_bytes());
+
+        let verify_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/auth/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::json!({"pubkey": pubkey, "signature": BASE64.encode(sig.to_bytes())})
+                    .to_string(),
+            ))
+            .unwrap();
+        let verify_resp = router.oneshot(verify_req).await.unwrap();
+        assert_eq!(verify_resp.status(), StatusCode::FORBIDDEN);
     }
 }

@@ -28,17 +28,19 @@ pub const ADMINISTRATOR: i64 = 1 << 13;
 pub const ALL_PERMISSIONS: i64 = (1 << 14) - 1;
 
 #[derive(Debug, Clone)]
-pub struct UserPermissions {
+pub struct MemberUser {
     pub user_id: String,
     pub permissions: i64,
     pub highest_role_position: i32,
 }
 
-impl UserPermissions {
+impl MemberUser {
     pub fn has(&self, permission: i64) -> bool {
         has_permission(self.permissions, permission)
     }
 }
+
+pub type UserPermissions = MemberUser;
 
 #[derive(Debug)]
 pub struct PermissionRejection {
@@ -73,7 +75,7 @@ impl IntoResponse for PermissionRejection {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for UserPermissions
+impl<S> FromRequestParts<S> for MemberUser
 where
     AppState: FromRef<S>,
     S: Send + Sync,
@@ -85,6 +87,23 @@ where
             .await
             .map_err(IntoResponse::into_response)?;
         let app_state = AppState::from_ref(state);
+
+        let is_member = app_state
+            .storage
+            .is_member(&auth.user_id)
+            .await
+            .map_err(|e| PermissionRejection::internal(e.to_string()).into_response())?;
+        if !is_member {
+            return Err(
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorBody {
+                        error: "membership required".to_string(),
+                    }),
+                )
+                    .into_response(),
+            );
+        }
 
         let (permissions, highest_role_position) = compute_base_permissions(
             app_state.storage.as_ref(),

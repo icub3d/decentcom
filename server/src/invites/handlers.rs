@@ -12,6 +12,7 @@ use crate::invites::models::{
     CreateInviteRequest, InvitePreviewResponse, InviteResponse, JoinInviteResponse, JoinedMember,
     ListInvitesResponse,
 };
+use crate::config::MembershipMode;
 use crate::permissions::{UserPermissions, MANAGE_INVITES};
 use crate::AppState;
 
@@ -223,6 +224,47 @@ pub(super) async fn join_invite(
     auth: AuthUser,
     Path(code): Path<String>,
 ) -> ApiResult<JoinInviteResponse> {
+    let user = state
+        .storage
+        .get_user_by_id(&auth.user_id)
+        .await
+        .map_err(internal)?
+        .ok_or_else(|| not_found("user not found"))?;
+
+    let already_member = state
+        .storage
+        .is_member(&auth.user_id)
+        .await
+        .map_err(internal)?;
+
+    if !already_member {
+        if state
+            .storage
+            .is_banned_pubkey(&user.pubkey)
+            .await
+            .map_err(internal)?
+        {
+            return Err(forbidden("this pubkey is banned from the server"));
+        }
+
+        match state.config.membership.mode {
+            MembershipMode::Open | MembershipMode::InviteOnly => {}
+            MembershipMode::Allowlist => {
+                if !state
+                    .storage
+                    .is_allowlisted_pubkey(&user.pubkey)
+                    .await
+                    .map_err(internal)?
+                {
+                    return Err(forbidden("pubkey is not on the allowlist"));
+                }
+            }
+            MembershipMode::Closed => {
+                return Err(forbidden("server membership is closed"));
+            }
+        }
+    }
+
     let invite = match state.storage.consume_invite(&code, Utc::now()).await {
         Ok(invite) => invite,
         Err(crate::storage::StorageError::Conflict(msg)) if msg.contains("expired") => {
@@ -234,13 +276,16 @@ pub(super) async fn join_invite(
         Err(e) => return Err(storage_err(e)),
     };
 
-    if !state
-        .storage
-        .user_has_role(&auth.user_id, "everyone")
-        .await
-        .map_err(internal)?
-    {
-        let _ = state.storage.add_member_role(&auth.user_id, "everyone").await;
+    if !already_member {
+        let _ = state.storage.add_member(&auth.user_id).await;
+        if !state
+            .storage
+            .user_has_role(&auth.user_id, "everyone")
+            .await
+            .map_err(internal)?
+        {
+            let _ = state.storage.add_member_role(&auth.user_id, "everyone").await;
+        }
     }
 
     if let Some(grant_role_id) = invite.grant_role_id.as_deref() {
@@ -256,13 +301,6 @@ pub(super) async fn join_invite(
                 .await;
         }
     }
-
-    let user = state
-        .storage
-        .get_user_by_id(&auth.user_id)
-        .await
-        .map_err(internal)?
-        .ok_or_else(|| not_found("user not found"))?;
 
     let role_ids = state
         .storage
@@ -282,16 +320,18 @@ pub(super) async fn join_invite(
         },
     };
 
-    if let Some(msg) = event_json(
-        Op::MemberJoin,
-        serde_json::json!({
-            "user_id": user.id,
-            "pubkey": user.pubkey,
-            "roles": role_ids,
-            "joined_at": joined_at,
-        }),
-    ) {
-        state.gateway.broadcast_all(&msg);
+    if !already_member {
+        if let Some(msg) = event_json(
+            Op::MemberJoin,
+            serde_json::json!({
+                "user_id": user.id,
+                "pubkey": user.pubkey,
+                "roles": role_ids,
+                "joined_at": joined_at,
+            }),
+        ) {
+            state.gateway.broadcast_all(&msg);
+        }
     }
 
     Ok(Json(response))

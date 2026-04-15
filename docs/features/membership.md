@@ -9,18 +9,18 @@ The server model design doc (`docs/design/server-model.md`) defines four members
 This feature depends on roles (#11) for permission checks (`kick_members`, `ban_members`) and invites (#12) for the `invite_only` join path.
 
 ## Requirements
-- [ ] Server configuration includes a `membership_mode` setting: `open`, `invite_only`, `allowlist`, `closed`
-- [ ] In `open` mode, any authenticated user can join by calling a join endpoint
-- [ ] In `invite_only` mode, joining requires a valid invite (handled by invites feature)
-- [ ] In `allowlist` mode, only pre-approved public keys can join; admins manage the allowlist
-- [ ] In `closed` mode, no new members can join
-- [ ] Users with `kick_members` permission can kick a member (removes membership, user can rejoin)
-- [ ] Users with `ban_members` permission can ban a member by pubkey (removes membership, blocks rejoin)
-- [ ] Users with `ban_members` permission can unban a pubkey
-- [ ] Kick and ban respect role hierarchy: cannot kick/ban a user with an equal or higher role
-- [ ] A member list endpoint returns all members with their roles and join date
-- [ ] Member join, leave, kick, and ban events are broadcast via the gateway
-- [ ] Banned pubkeys are persisted and checked on every join attempt
+- [x] Server configuration includes a `membership_mode` setting: `open`, `invite_only`, `allowlist`, `closed`
+- [x] In `open` mode, any authenticated user can join by calling a join endpoint
+- [x] In `invite_only` mode, joining requires a valid invite (handled by invites feature)
+- [x] In `allowlist` mode, only pre-approved public keys can join; admins manage the allowlist
+- [x] In `closed` mode, no new members can join
+- [x] Users with `kick_members` permission can kick a member (removes membership, user can rejoin)
+- [x] Users with `ban_members` permission can ban a member by pubkey (removes membership, blocks rejoin)
+- [x] Users with `ban_members` permission can unban a pubkey
+- [x] Kick and ban respect role hierarchy: cannot kick/ban a user with an equal or higher role
+- [x] A member list endpoint returns all members with their roles and join date
+- [x] Member join, leave, kick, and ban events are broadcast via the gateway
+- [x] Banned pubkeys are persisted and checked on every join attempt
 
 ## Design
 
@@ -119,46 +119,46 @@ membership_mode = "invite_only"  # open | invite_only | allowlist | closed
 ## Task List
 
 ### Server
-- [ ] Add `membership_mode` to server config struct and TOML parsing
-- [ ] Define Member, Ban, and AllowlistEntry model structs
-- [ ] Add `MemberStore` trait to the storage trait hierarchy
-- [ ] Write SQLite migrations for `members`, `bans`, and `allowlist` tables
-- [ ] Implement `MemberStore` for the SQLite backend
-- [ ] Implement POST `/members/join` with membership mode enforcement (open: allow; invite_only: reject without invite; allowlist: check list; closed: reject)
-- [ ] Implement DELETE `/members/me` (voluntary leave)
-- [ ] Implement GET `/members` and GET `/members/:pubkey`
-- [ ] Implement POST `/members/:pubkey/kick` with permission and hierarchy checks
-- [ ] Implement POST `/members/:pubkey/ban` with permission and hierarchy checks; remove membership and add to bans table
-- [ ] Implement DELETE `/bans/:pubkey` (unban) and GET `/bans`
-- [ ] Implement allowlist CRUD endpoints (GET/POST/DELETE `/allowlist`)
-- [ ] Add ban check to all join paths (direct join, invite join): reject if pubkey is in bans table
-- [ ] Add membership middleware: most API endpoints require the user to be a current member (`MemberUser` extractor)
-- [ ] Broadcast MEMBER_JOIN, MEMBER_LEAVE, MEMBER_KICK, MEMBER_BAN events via gateway
+- [x] Add `membership_mode` to server config struct and TOML parsing
+- [x] Define Member, Ban, and AllowlistEntry model structs
+- [x] Add `MemberStore` trait to the storage trait hierarchy
+- [x] Write SQLite migrations for `members`, `bans`, and `allowlist` tables
+- [x] Implement `MemberStore` for the SQLite backend
+- [x] Implement POST `/members/join` with membership mode enforcement (open: allow; invite_only: reject without invite; allowlist: check list; closed: reject)
+- [x] Implement DELETE `/members/me` (voluntary leave)
+- [x] Implement GET `/members` and GET `/members/:pubkey`
+- [x] Implement POST `/members/:pubkey/kick` with permission and hierarchy checks
+- [x] Implement POST `/members/:pubkey/ban` with permission and hierarchy checks; remove membership and add to bans table
+- [x] Implement DELETE `/bans/:pubkey` (unban) and GET `/bans`
+- [x] Implement allowlist CRUD endpoints (GET/POST/DELETE `/allowlist`)
+- [x] Add ban check to all join paths (direct join, invite join): reject if pubkey is in bans table
+- [x] Add membership middleware: most API endpoints require the user to be a current member (`MemberUser` extractor)
+- [x] Broadcast MEMBER_JOIN, MEMBER_LEAVE, MEMBER_KICK, MEMBER_BAN events via gateway
 
 ### Client
-- [ ] Add members API client functions
-- [ ] Add members Zustand store slice (member list, bans, allowlist)
-- [ ] Handle membership gateway events to keep member list in sync
+- [x] Add members API client functions
+- [x] Add members Zustand store slice (member list, bans, allowlist)
+- [x] Handle membership gateway events to keep member list in sync
 - [ ] Build MemberList sidebar component showing members grouped by role and online status
-- [ ] Build MemberContextMenu with kick/ban actions (gated by permissions)
-- [ ] Build BanList view in server settings
-- [ ] Build AllowlistEditor in server settings (visible only when mode is allowlist)
-- [ ] Build MembershipSettings to change membership mode
+- [x] Build MemberContextMenu with kick/ban actions (gated by permissions)
+- [x] Build BanList view in server settings
+- [x] Build AllowlistEditor in server settings (visible only when mode is allowlist)
+- [x] Build MembershipSettings to change membership mode
 
 ## Test List
 - [ ] Unit: membership mode enforcement logic correctly allows/rejects joins
-- [ ] Unit: hierarchy check prevents kicking/banning users with equal or higher roles
-- [ ] Integration: join in open mode succeeds
-- [ ] Integration: join in invite_only mode without invite is rejected
-- [ ] Integration: join in allowlist mode with unlisted pubkey is rejected
-- [ ] Integration: join in allowlist mode with listed pubkey succeeds
-- [ ] Integration: join in closed mode is rejected (tested at auth layer via `registration_restricted_in_closed_mode`)
-- [ ] Integration: kick removes membership, user can rejoin
-- [ ] Integration: ban removes membership, rejoin is blocked
-- [ ] Integration: unban allows previously banned pubkey to rejoin
-- [ ] Integration: user without kick_members permission cannot kick
-- [ ] Integration: user without ban_members permission cannot ban
-- [ ] Integration: GET /members returns all members with roles
+- [x] Unit: hierarchy check prevents kicking/banning users with equal or higher roles
+- [x] Integration: join in open mode succeeds
+- [x] Integration: join in invite_only mode without invite is rejected
+- [x] Integration: join in allowlist mode with unlisted pubkey is rejected
+- [x] Integration: join in allowlist mode with listed pubkey succeeds
+- [x] Integration: join in closed mode is rejected (tested at auth layer via `registration_restricted_in_closed_mode`)
+- [x] Integration: kick removes membership, user can rejoin
+- [x] Integration: ban removes membership, rejoin is blocked
+- [x] Integration: unban allows previously banned pubkey to rejoin
+- [x] Integration: user without kick_members permission cannot kick
+- [x] Integration: user without ban_members permission cannot ban
+- [x] Integration: GET /members returns all members with roles
 - [ ] Integration: membership change events are broadcast via gateway (events broadcast; WebSocket delivery tested in gateway tests)
 - [ ] Manual: member list displays correctly with role badges
 - [ ] Manual: right-click context menu shows kick/ban only for permitted users
@@ -169,6 +169,7 @@ membership_mode = "invite_only"  # open | invite_only | allowlist | closed
 - The first registered user (server owner) is always auto-joined as a member regardless of membership mode, so they can manage the server.
 - The `MemberUser` extractor lives in `server/src/permissions.rs` and wraps `UserPermissions` with a membership check.
 - `GET /members/:pubkey` looks up by public key (not user ID) since pubkeys are the user-visible identity.
+- Runtime API support for changing `membership_mode` is not implemented yet; mode changes still come from server config and restart.
 
 ## Open Questions
 - Should kicked users receive a notification with a reason, or just be disconnected?

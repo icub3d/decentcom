@@ -23,6 +23,7 @@ pub struct ServerIdentity {
     pub name: String,
     pub description: Option<String>,
     pub icon_path: Option<PathBuf>,
+    pub membership_mode: Option<MembershipMode>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -101,6 +102,7 @@ impl Default for ServerIdentity {
             name: "decentcom".to_string(),
             description: None,
             icon_path: None,
+            membership_mode: None,
         }
     }
 }
@@ -194,7 +196,10 @@ impl std::error::Error for ConfigError {}
 
 impl ServerConfig {
     pub fn from_toml_str(s: &str) -> Result<Self, ConfigError> {
-        let cfg: ServerConfig = toml::from_str(s).map_err(ConfigError::Parse)?;
+        let mut cfg: ServerConfig = toml::from_str(s).map_err(ConfigError::Parse)?;
+        if let Some(mode) = cfg.server.membership_mode {
+            cfg.membership.mode = mode;
+        }
         cfg.validate()?;
         Ok(cfg)
     }

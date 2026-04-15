@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 use super::models::{
-    Category, Channel, ChannelPermissionOverride, Invite, MemberRole, Message, Role, Session,
-    User,
+    AllowlistEntry, Ban, Category, Channel, ChannelPermissionOverride, Invite, Member, MemberRole,
+    Message, Role, Session, User,
 };
 use super::StorageError;
 
@@ -124,6 +124,7 @@ pub trait RoleStore: Send + Sync {
         role_id: &str,
     ) -> Result<MemberRole, StorageError>;
     async fn remove_member_role(&self, user_id: &str, role_id: &str) -> Result<(), StorageError>;
+    async fn remove_all_member_roles(&self, user_id: &str) -> Result<(), StorageError>;
     async fn list_member_roles(&self, user_id: &str) -> Result<Vec<Role>, StorageError>;
     async fn list_role_members(&self, role_id: &str) -> Result<Vec<MemberRole>, StorageError>;
     async fn user_has_role(&self, user_id: &str, role_id: &str) -> Result<bool, StorageError>;
@@ -163,6 +164,34 @@ pub trait InviteStore: Send + Sync {
     async fn delete_expired_invites(&self, now: DateTime<Utc>) -> Result<u64, StorageError>;
 }
 
+#[async_trait]
+pub trait MemberStore: Send + Sync {
+    async fn add_member(&self, user_id: &str) -> Result<Member, StorageError>;
+    async fn remove_member(&self, user_id: &str) -> Result<(), StorageError>;
+    async fn is_member(&self, user_id: &str) -> Result<bool, StorageError>;
+    async fn list_members(&self) -> Result<Vec<Member>, StorageError>;
+    async fn get_member_by_pubkey(&self, pubkey: &str) -> Result<Option<Member>, StorageError>;
+
+    async fn add_ban(
+        &self,
+        pubkey: &str,
+        banned_by: &str,
+        reason: Option<&str>,
+    ) -> Result<Ban, StorageError>;
+    async fn remove_ban(&self, pubkey: &str) -> Result<(), StorageError>;
+    async fn is_banned_pubkey(&self, pubkey: &str) -> Result<bool, StorageError>;
+    async fn list_bans(&self) -> Result<Vec<Ban>, StorageError>;
+
+    async fn add_allowlist_entry(
+        &self,
+        pubkey: &str,
+        added_by: &str,
+    ) -> Result<AllowlistEntry, StorageError>;
+    async fn remove_allowlist_entry(&self, pubkey: &str) -> Result<(), StorageError>;
+    async fn is_allowlisted_pubkey(&self, pubkey: &str) -> Result<bool, StorageError>;
+    async fn list_allowlist_entries(&self) -> Result<Vec<AllowlistEntry>, StorageError>;
+}
+
 /// Media storage is defined here but implementation is deferred to the
 /// file-uploads feature.
 #[async_trait]
@@ -180,7 +209,14 @@ pub trait MediaStore: Send + Sync {
 }
 
 pub trait Storage:
-    UserStore + ChannelStore + CategoryStore + MessageStore + SessionStore + RoleStore + InviteStore
+    UserStore
+    + ChannelStore
+    + CategoryStore
+    + MessageStore
+    + SessionStore
+    + RoleStore
+    + InviteStore
+    + MemberStore
 {
 }
 
@@ -192,5 +228,6 @@ impl<T> Storage for T where
         + SessionStore
         + RoleStore
         + InviteStore
+        + MemberStore
 {
 }

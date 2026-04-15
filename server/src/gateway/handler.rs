@@ -73,5 +73,8 @@ async fn validate_session(state: &AppState, token: &str) -> Option<String> {
         let _ = state.storage.delete_session(token).await;
         return None;
     }
+    if !state.storage.is_member(&session.user_id).await.ok()? {
+        return None;
+    }
     Some(session.user_id)
 }

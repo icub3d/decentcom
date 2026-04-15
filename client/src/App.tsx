@@ -5,6 +5,7 @@ import { JoinByInvite } from "./components/invites/JoinByInvite";
 import { AppShell } from "./components/layout/AppShell";
 import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
+import { authenticateServer } from "./services/auth";
 import { useAppStore } from "./stores/appStore";
 import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
@@ -48,12 +49,9 @@ function App() {
     setConnectLoading(true);
     setConnectError(null);
     try {
+      const session = await authenticateServer(address);
+      await joinInvite(address, session.token, inviteCode);
       await connect(address);
-      const token = useServerStore.getState().sessionToken;
-      if (!token) {
-        throw new Error("failed to establish authenticated session");
-      }
-      await joinInvite(address, token, inviteCode);
       addServer(address);
       clearInviteLink();
     } catch (err) {

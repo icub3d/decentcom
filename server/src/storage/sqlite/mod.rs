@@ -1,5 +1,6 @@
 mod channels;
 mod invites;
+mod membership;
 mod messages;
 mod roles;
 mod sessions;

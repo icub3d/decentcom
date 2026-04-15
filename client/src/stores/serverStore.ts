@@ -2,9 +2,10 @@ import { create } from "zustand";
 
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
-import { apiRequest } from "../services/api";
+import { ApiError, apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
+import { useMembersStore } from "./members";
 
 export interface Channel {
   id: string;
@@ -51,7 +52,10 @@ export interface GatewayEvent {
     | Role
     | { id: string; channel_id?: string }
     | { user_id: string; role_id: string }
-    | { user_id: string; pubkey: string; roles: string[]; joined_at: string };
+    | { user_id: string; pubkey: string; roles: string[]; joined_at: string }
+    | { user_id: string; pubkey: string; left_at: string }
+    | { user_id: string; pubkey: string; kicked_by: string; kicked_at: string }
+    | { pubkey: string; banned_by: string; reason?: string; banned_at: string };
   t: number;
 }
 
@@ -126,6 +130,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         token: session.token,
       });
       const roleData = await listRoles(normalized, session.token);
+      await useMembersStore.getState().fetchMembers(normalized, session.token);
 
       const firstChannelId = channelData.channels[0]?.id ?? null;
 
@@ -146,6 +151,10 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
       set({ status: "connected" });
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        set({ status: "disconnected", error: error.message, sessionToken: null, sessionUserId: null });
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       set({ status: "disconnected", error: message, sessionToken: null, sessionUserId: null });
       throw error;
@@ -154,6 +163,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
   disconnect: () => {
     get().gateway?.disconnect();
+    useMembersStore.getState().clear();
     set({
       status: "disconnected",
       sessionToken: null,
@@ -363,12 +373,25 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           const member = event.d as { user_id: string; pubkey: string; roles: string[]; joined_at: string };
           const existing = state.memberRoleIdsByUserId[member.user_id] ?? [];
           const merged = Array.from(new Set([...existing, ...member.roles]));
+          useMembersStore.getState().applyGatewayEvent(event);
           return {
             memberRoleIdsByUserId: {
               ...state.memberRoleIdsByUserId,
               [member.user_id]: merged,
             },
           };
+        }
+        case "MEMBER_LEAVE":
+        case "MEMBER_KICK": {
+          const payload = event.d as { user_id: string };
+          useMembersStore.getState().applyGatewayEvent(event);
+          const next = { ...state.memberRoleIdsByUserId };
+          delete next[payload.user_id];
+          return { memberRoleIdsByUserId: next };
+        }
+        case "MEMBER_BAN": {
+          useMembersStore.getState().applyGatewayEvent(event);
+          return {};
         }
         default:
           return {};

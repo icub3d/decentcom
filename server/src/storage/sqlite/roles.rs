@@ -163,6 +163,14 @@ impl RoleStore for SqliteStorage {
         Ok(())
     }
 
+    async fn remove_all_member_roles(&self, user_id: &str) -> Result<(), StorageError> {
+        sqlx::query("DELETE FROM member_roles WHERE user_id = ?")
+            .bind(user_id)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
     async fn list_member_roles(&self, user_id: &str) -> Result<Vec<Role>, StorageError> {
         let rows = sqlx::query(
             "SELECT r.*

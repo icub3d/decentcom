@@ -76,6 +76,28 @@ pub struct ChannelPermissionOverride {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Member {
+    pub user_id: String,
+    pub pubkey: String,
+    pub joined_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Ban {
+    pub pubkey: String,
+    pub banned_by: String,
+    pub reason: Option<String>,
+    pub banned_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AllowlistEntry {
+    pub pubkey: String,
+    pub added_by: String,
+    pub added_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Invite {
     pub code: String,
     pub created_by: String,

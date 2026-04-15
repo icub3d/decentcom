@@ -12,6 +12,7 @@ use shared::auth::{
 };
 
 use crate::auth::middleware::AuthUser;
+use crate::config::MembershipMode;
 use crate::AppState;
 
 #[derive(Debug, Serialize)]
@@ -68,6 +69,11 @@ pub(super) async fn verify(
     {
         Some(existing) => existing,
         None => {
+            if state.config.membership.mode == MembershipMode::Closed {
+                return Err(forbidden(
+                    "registration is disabled while membership mode is closed",
+                ));
+            }
             created_user = true;
             state
                 .storage
@@ -78,10 +84,14 @@ pub(super) async fn verify(
     };
 
     if created_user {
-        let _ = state.storage.add_member_role(&user.id, "everyone").await;
         let users = state.storage.list_users().await.map_err(internal)?;
         if users.len() == 1 {
+            let _ = state.storage.add_member(&user.id).await;
+            let _ = state.storage.add_member_role(&user.id, "everyone").await;
             let _ = state.storage.add_member_role(&user.id, "admin").await;
+        } else if state.config.membership.mode == MembershipMode::Open {
+            let _ = state.storage.add_member(&user.id).await;
+            let _ = state.storage.add_member_role(&user.id, "everyone").await;
         }
     }
 
@@ -133,6 +143,15 @@ fn bad_request(msg: &str) -> (StatusCode, Json<ErrorBody>) {
 fn unauthorized(msg: &str) -> (StatusCode, Json<ErrorBody>) {
     (
         StatusCode::UNAUTHORIZED,
+        Json(ErrorBody {
+            error: msg.to_string(),
+        }),
+    )
+}
+
+fn forbidden(msg: &str) -> (StatusCode, Json<ErrorBody>) {
+    (
+        StatusCode::FORBIDDEN,
         Json(ErrorBody {
             error: msg.to_string(),
         }),

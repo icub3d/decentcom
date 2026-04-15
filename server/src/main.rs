@@ -3,6 +3,7 @@ mod channels;
 mod config;
 mod gateway;
 mod invites;
+mod membership;
 mod messages;
 mod permissions;
 mod roles;
@@ -44,6 +45,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", channels::router())
         .nest("/api/v1", messages::router())
         .nest("/api/v1", invites::router())
+        .nest("/api/v1", membership::router())
         .nest("/api/v1", roles::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
