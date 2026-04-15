@@ -37,7 +37,7 @@ interface MessagePage {
   has_more: boolean;
 }
 
-type ConnectionStatus = "connecting" | "connected" | "disconnected";
+type ConnectionStatus = "connecting" | "connected" | "disconnected" | "reconnecting";
 
 export interface GatewayEvent {
   op: string;
@@ -73,6 +73,7 @@ export interface ServerStore {
 
   connect: (address: string) => Promise<void>;
   disconnect: () => void;
+  revalidate: () => Promise<void>;
   setCurrentChannel: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   loadMoreMessages: (channelId: string) => Promise<void>;
@@ -191,6 +192,33 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       messages: {},
       hasMore: {},
     });
+  },
+
+  revalidate: async () => {
+    const { address, sessionToken } = get();
+    if (!address || !sessionToken) return;
+
+    try {
+      const channelData = await apiRequest<ChannelsResponse>(address, "/api/v1/channels", {
+        token: sessionToken,
+      });
+      const roleData = await listRoles(address, sessionToken);
+      await useMembersStore.getState().fetchMembers(address, sessionToken);
+
+      const members = useMembersStore.getState().members;
+      const roleMap: Record<string, string[]> = {};
+      for (const member of members) {
+        roleMap[member.user_id] = member.roles.map((r) => r.id);
+      }
+
+      set({
+        channels: sortChannels(channelData.channels),
+        roles: roleData,
+        memberRoleIdsByUserId: roleMap,
+      });
+    } catch {
+      // Revalidation is best-effort; the gateway is already connected.
+    }
   },
 
   setCurrentChannel: async (id: string) => {

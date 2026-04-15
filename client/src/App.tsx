@@ -34,6 +34,13 @@ function App() {
     initTheme();
   }, [initTheme]);
 
+  // Clear connection errors once the gateway is connected
+  useEffect(() => {
+    if (status === "connected") {
+      setConnectError(null);
+    }
+  }, [status]);
+
   useEffect(() => {
     if (
       hasIdentity &&

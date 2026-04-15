@@ -16,10 +16,16 @@ function toGatewayUrl(baseUrl: string): string {
   return `${baseUrl}/api/v1/gateway`;
 }
 
+const BASE_DELAY_MS = 1000;
+const MAX_DELAY_MS = 30000;
+const BACKOFF_FACTOR = 2;
+
 export class GatewayClient {
   private socket: WebSocket | null = null;
   private reconnectTimer: number | null = null;
   private shouldReconnect = true;
+  private reconnectAttempt = 0;
+  private wasConnected = false;
   private readonly getState: () => ServerStore;
 
   constructor(getState: () => ServerStore) {
@@ -36,13 +42,25 @@ export class GatewayClient {
       return;
     }
 
+    if (this.reconnectAttempt > 0) {
+      this.getState().setStatus("reconnecting");
+    }
+
     const url = new URL(toGatewayUrl(state.address));
     url.searchParams.set("token", state.sessionToken);
 
     this.socket = new WebSocket(url.toString());
 
     this.socket.onopen = () => {
+      const wasReconnect = this.wasConnected;
+      this.reconnectAttempt = 0;
+      this.wasConnected = true;
       this.getState().setStatus("connected");
+
+      if (wasReconnect) {
+        void this.getState().revalidate();
+      }
+
       const channelId = this.getState().currentChannelId;
       if (channelId) {
         this.subscribe(channelId);
@@ -63,20 +81,24 @@ export class GatewayClient {
     };
 
     this.socket.onclose = () => {
-      this.getState().setStatus("disconnected");
       this.socket = null;
       if (this.shouldReconnect) {
+        this.getState().setStatus("reconnecting");
         this.scheduleReconnect();
+      } else {
+        this.getState().setStatus("disconnected");
       }
     };
 
     this.socket.onerror = () => {
-      this.getState().setStatus("disconnected");
+      // onerror is always followed by onclose, so no status change needed here.
     };
   }
 
   disconnect() {
     this.shouldReconnect = false;
+    this.reconnectAttempt = 0;
+    this.wasConnected = false;
     if (this.reconnectTimer !== null) {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -87,6 +109,7 @@ export class GatewayClient {
 
   reconnect() {
     this.shouldReconnect = true;
+    this.reconnectAttempt = 0;
     this.connect();
   }
 
@@ -109,9 +132,11 @@ export class GatewayClient {
     if (this.reconnectTimer !== null) {
       return;
     }
+    const delay = Math.min(BASE_DELAY_MS * BACKOFF_FACTOR ** this.reconnectAttempt, MAX_DELAY_MS);
+    this.reconnectAttempt += 1;
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, 1500);
+    }, delay);
   }
 }
