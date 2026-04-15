@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 use super::models::{
-    AllowlistEntry, Ban, Channel, ChannelPermissionOverride, Invite, Member, MemberRole,
-    Message, Role, Session, User,
+    AllowlistEntry, Attachment, Ban, Channel, ChannelPermissionOverride, Invite, Member,
+    MemberRole, Message, Role, Session, User,
 };
 use super::StorageError;
 
@@ -200,6 +200,39 @@ pub trait MediaStore: Send + Sync {
     async fn delete(&self, id: &str) -> Result<(), StorageError>;
 }
 
+#[async_trait]
+pub trait AttachmentStore: Send + Sync {
+    async fn create_attachment(
+        &self,
+        params: CreateAttachmentParams<'_>,
+    ) -> Result<Attachment, StorageError>;
+
+    async fn get_attachment(&self, id: &str) -> Result<Option<Attachment>, StorageError>;
+
+    async fn associate_attachments(
+        &self,
+        attachment_ids: &[String],
+        message_id: &str,
+        uploader_id: &str,
+    ) -> Result<Vec<Attachment>, StorageError>;
+
+    async fn list_attachments_for_message(
+        &self,
+        message_id: &str,
+    ) -> Result<Vec<Attachment>, StorageError>;
+}
+
+pub struct CreateAttachmentParams<'a> {
+    pub channel_id: &'a str,
+    pub uploader_id: &'a str,
+    pub filename: &'a str,
+    pub content_hash: &'a str,
+    pub size: i64,
+    pub mime_type: &'a str,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+}
+
 pub trait Storage:
     UserStore
     + ChannelStore
@@ -209,6 +242,7 @@ pub trait Storage:
     + InviteStore
     + MemberStore
     + MediaStore
+    + AttachmentStore
 {
 }
 
@@ -221,5 +255,6 @@ impl<T> Storage for T where
         + InviteStore
         + MemberStore
         + MediaStore
+        + AttachmentStore
 {
 }

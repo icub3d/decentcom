@@ -1,3 +1,4 @@
+mod attachments;
 mod auth;
 mod channels;
 mod config;
@@ -51,7 +52,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", roles::router())
         .nest("/api/v1", server_info::router())
         .nest("/api/v1", profiles::profile_router())
-        .nest("/api/v1", profiles::media_router())
+        .nest("/api/v1", attachments::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .layer(cors_layer())

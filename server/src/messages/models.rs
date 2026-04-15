@@ -1,9 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::attachments::models::AttachmentResponse;
+
 #[derive(Debug, Deserialize)]
 pub struct CreateMessageRequest {
     pub content: String,
+    #[serde(default)]
+    pub attachment_ids: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +31,7 @@ pub struct MessageResponse {
     pub created_at: DateTime<Utc>,
     pub edited_at: Option<DateTime<Utc>>,
     pub deleted: bool,
+    pub attachments: Vec<AttachmentResponse>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,8 +40,8 @@ pub struct MessagePage {
     pub has_more: bool,
 }
 
-impl From<crate::storage::models::Message> for MessageResponse {
-    fn from(m: crate::storage::models::Message) -> Self {
+impl MessageResponse {
+    pub fn from_message(m: crate::storage::models::Message, attachments: Vec<AttachmentResponse>) -> Self {
         Self {
             id: m.id,
             channel_id: m.channel_id,
@@ -45,6 +50,13 @@ impl From<crate::storage::models::Message> for MessageResponse {
             created_at: m.created_at,
             edited_at: m.edited_at,
             deleted: m.deleted,
+            attachments,
         }
+    }
+}
+
+impl From<crate::storage::models::Message> for MessageResponse {
+    fn from(m: crate::storage::models::Message) -> Self {
+        Self::from_message(m, Vec::new())
     }
 }

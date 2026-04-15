@@ -101,3 +101,19 @@ pub struct Invite {
     pub expires_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Attachment {
+    pub id: String,
+    pub message_id: Option<String>,
+    pub channel_id: String,
+    pub uploader_id: String,
+    pub filename: String,
+    pub content_hash: String,
+    pub size: i64,
+    pub mime_type: String,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
