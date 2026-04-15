@@ -158,12 +158,19 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       const roleData = await listRoles(normalized, session.token);
       await useMembersStore.getState().fetchMembers(normalized, session.token);
 
+      const members = useMembersStore.getState().members;
+      const roleMap: Record<string, string[]> = {};
+      for (const member of members) {
+        roleMap[member.user_id] = member.roles.map((r) => r.id);
+      }
+
       const firstChannelId = channelData.channels[0]?.id ?? null;
 
       set({
         channels: sortChannels(channelData.channels),
         categories: sortCategories(channelData.categories),
         roles: roleData,
+        memberRoleIdsByUserId: roleMap,
         currentChannelId: firstChannelId,
       });
 
