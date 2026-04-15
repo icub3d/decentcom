@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { CreateCategoryRequest, CreateChannelRequest, UpdateCategoryRequest, UpdateChannelRequest } from "../api/channels";
+import type { CreateChannelRequest, UpdateChannelRequest } from "../api/channels";
 import * as channelsApi from "../api/channels";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
@@ -13,15 +13,9 @@ import { joinServer } from "../api/members";
 export interface Channel {
   id: string;
   name: string;
-  category_id: string | null;
+  category: string | null;
   position: number;
   type: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  position: number;
 }
 
 export interface Message {
@@ -36,7 +30,6 @@ export interface Message {
 
 interface ChannelsResponse {
   channels: Channel[];
-  categories: Category[];
 }
 
 interface MessagePage {
@@ -51,7 +44,6 @@ export interface GatewayEvent {
   d:
     | Message
     | Channel
-    | Category
     | Role
     | { id: string; channel_id?: string }
     | { user_id: string; role_id: string }
@@ -70,7 +62,6 @@ export interface ServerStore {
   sessionToken: string | null;
   sessionUserId: string | null;
   channels: Channel[];
-  categories: Category[];
   roles: Role[];
   memberRoleIdsByUserId: Record<string, string[]>;
   channelOverridesByChannelId: Record<string, ChannelPermissionOverride[]>;
@@ -88,9 +79,6 @@ export interface ServerStore {
   createChannel: (req: CreateChannelRequest) => Promise<void>;
   updateChannel: (channelId: string, req: UpdateChannelRequest) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
-  createCategory: (req: CreateCategoryRequest) => Promise<Category>;
-  updateCategory: (categoryId: string, req: UpdateCategoryRequest) => Promise<void>;
-  deleteCategory: (categoryId: string) => Promise<void>;
   setStatus: (status: ConnectionStatus) => void;
   handleGatewayEvent: (event: GatewayEvent) => void;
 }
@@ -107,10 +95,6 @@ function sortChannels(channels: Channel[]): Channel[] {
   return [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
 }
 
-function sortCategories(categories: Category[]): Category[] {
-  return [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
-}
-
 export const useServerStore = create<ServerStore>((set, get) => ({
   serverId: "",
   address: "",
@@ -118,7 +102,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   sessionToken: null,
   sessionUserId: null,
   channels: [],
-  categories: [],
   roles: [],
   memberRoleIdsByUserId: {},
   channelOverridesByChannelId: {},
@@ -168,7 +151,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
       set({
         channels: sortChannels(channelData.channels),
-        categories: sortCategories(channelData.categories),
         roles: roleData,
         memberRoleIdsByUserId: roleMap,
         currentChannelId: firstChannelId,
@@ -202,7 +184,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       sessionToken: null,
       sessionUserId: null,
       channels: [],
-      categories: [],
       roles: [],
       memberRoleIdsByUserId: {},
       channelOverridesByChannelId: {},
@@ -295,24 +276,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     await channelsApi.deleteChannel(address, sessionToken, channelId);
   },
 
-  createCategory: async (req: CreateCategoryRequest) => {
-    const { address, sessionToken } = get();
-    if (!sessionToken) throw new Error("Not connected");
-    return channelsApi.createCategory(address, sessionToken, req);
-  },
-
-  updateCategory: async (categoryId: string, req: UpdateCategoryRequest) => {
-    const { address, sessionToken } = get();
-    if (!sessionToken) return;
-    await channelsApi.updateCategory(address, sessionToken, categoryId, req);
-  },
-
-  deleteCategory: async (categoryId: string) => {
-    const { address, sessionToken } = get();
-    if (!sessionToken) return;
-    await channelsApi.deleteCategory(address, sessionToken, categoryId);
-  },
-
   setStatus: (status) => set({ status }),
 
   handleGatewayEvent: (event: GatewayEvent) => {
@@ -371,22 +334,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           const nextCurrent =
             state.currentChannelId === deleted.id ? nextChannels[0]?.id ?? null : state.currentChannelId;
           return { channels: nextChannels, currentChannelId: nextCurrent };
-        }
-        case "CATEGORY_CREATE": {
-          const category = event.d as Category;
-          return { categories: sortCategories([...state.categories, category]) };
-        }
-        case "CATEGORY_UPDATE": {
-          const category = event.d as Category;
-          return {
-            categories: sortCategories(
-              state.categories.map((c) => (c.id === category.id ? category : c)),
-            ),
-          };
-        }
-        case "CATEGORY_DELETE": {
-          const deleted = event.d as { id: string };
-          return { categories: state.categories.filter((c) => c.id !== deleted.id) };
         }
         case "ROLE_CREATE": {
           const role = event.d as Role;
