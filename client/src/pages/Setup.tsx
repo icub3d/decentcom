@@ -1,6 +1,13 @@
 import { useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { IdentityInfo, PublicKeyInfo } from "../hooks/useIdentity";
 import { SeedPhrase } from "./SeedPhrase";
+import { keyImport, keyBackupReadPubkey } from "../services/identity";
+
+function shortPubkey(pubkey: string): string {
+  if (pubkey.length <= 12) return pubkey;
+  return `${pubkey.slice(0, 6)}…${pubkey.slice(-4)}`;
+}
 
 interface SetupProps {
   onGenerate: () => Promise<IdentityInfo>;
@@ -10,11 +17,16 @@ interface SetupProps {
 }
 
 export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps) {
-  const [view, setView] = useState<"choice" | "generate" | "import">("choice");
+  const [view, setView] = useState<"choice" | "generate" | "import" | "backup">("choice");
   const [seedPhrase, setSeedPhrase] = useState<string[]>([]);
   const [importText, setImportText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Backup import state
+  const [backupFile, setBackupFile] = useState<string | null>(null);
+  const [backupPubkey, setBackupPubkey] = useState<string | null>(null);
+  const [backupPassphrase, setBackupPassphrase] = useState("");
 
   const handleGenerate = async () => {
     try {
@@ -48,8 +60,109 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
     }
   };
 
+  const handlePickBackupFile = async () => {
+    setError(null);
+    setBackupPubkey(null);
+    try {
+      const result = await open({
+        title: "Select Key Backup",
+        multiple: false,
+        filters: [{ name: "DecentCom Key Backup", extensions: ["dckb"] }],
+      });
+      if (!result) return;
+      setBackupFile(result);
+      const info = await keyBackupReadPubkey(result);
+      setBackupPubkey(info.pubkey);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleBackupImport = async () => {
+    if (!backupFile || !backupPassphrase) return;
+    try {
+      setLoading(true);
+      setError(null);
+      await keyImport(backupPassphrase, backupFile);
+      onComplete();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetBackupState = () => {
+    setBackupFile(null);
+    setBackupPubkey(null);
+    setBackupPassphrase("");
+    setError(null);
+  };
+
   if (view === "generate") {
     return <SeedPhrase seedPhrase={seedPhrase} onConfirm={onComplete} />;
+  }
+
+  if (view === "backup") {
+    return (
+      <div className="max-w-xl mx-auto p-8 space-y-6 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
+        <h2 className="text-2xl font-bold text-ctp-text">Restore from Backup</h2>
+        <p className="text-ctp-subtext1">
+          Select a <span className="font-mono text-ctp-blue">.dckb</span> backup file and enter
+          the passphrase you used when exporting.
+        </p>
+
+        <button
+          onClick={() => void handlePickBackupFile()}
+          className="w-full py-3 rounded-lg border border-dashed border-ctp-overlay0 text-ctp-subtext1 hover:text-ctp-blue hover:border-ctp-blue transition cursor-pointer"
+        >
+          {backupFile
+            ? `Selected: ${backupFile.split("/").pop()}`
+            : "Choose .dckb file…"}
+        </button>
+
+        {backupPubkey && (
+          <p className="text-sm text-ctp-subtext0">
+            Identity in file:{" "}
+            <span className="font-mono text-ctp-text">{shortPubkey(backupPubkey)}</span>
+          </p>
+        )}
+
+        {backupFile && (
+          <input
+            type="password"
+            placeholder="Passphrase"
+            value={backupPassphrase}
+            onChange={(e) => {
+              setBackupPassphrase(e.target.value);
+              setError(null);
+            }}
+            className="w-full p-3 bg-ctp-base rounded-lg border border-ctp-overlay0 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-blue"
+          />
+        )}
+
+        {error && <p className="text-ctp-red text-sm">{error}</p>}
+
+        <div className="flex gap-4">
+          <button
+            onClick={() => {
+              resetBackupState();
+              setView("choice");
+            }}
+            className="flex-1 py-3 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-lg font-semibold transition-colors cursor-pointer"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => void handleBackupImport()}
+            disabled={!backupFile || !backupPassphrase || loading}
+            className="flex-1 py-3 bg-ctp-green hover:bg-ctp-green/80 disabled:bg-ctp-overlay0 text-ctp-crust rounded-lg font-semibold transition-colors shadow-lg cursor-pointer"
+          >
+            {loading ? "Decrypting…" : "Restore Identity"}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (view === "import") {
@@ -107,7 +220,13 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
           onClick={() => setView("import")}
           className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
-          Import Existing
+          Import Seed Phrase
+        </button>
+        <button
+          onClick={() => setView("backup")}
+          className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
+        >
+          Restore from Backup File
         </button>
         {onCancel && (
           <button
