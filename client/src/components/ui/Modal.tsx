@@ -32,7 +32,7 @@ export function Modal({ children, onClose }: ModalProps) {
       onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="max-h-[90vh] overflow-y-auto">{children}</div>
+      <div className="max-h-[90vh] overflow-y-auto rounded-xl border border-ctp-overlay0 bg-ctp-mantle shadow-xl">{children}</div>
     </div>,
     document.body,
   );
