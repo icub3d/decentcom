@@ -99,14 +99,14 @@ function App() {
   }
 
   async function handleSwitchAccount(pubkey: string) {
-    // Disconnect current session, switch backend active key, reload store.
-    disconnect();
-    // Read from the store directly rather than from a stale closure —
-    // an earlier async flow (e.g. handleSetupComplete) may have already
-    // changed the active account before this function runs.
+    // Switch the app store BEFORE disconnecting so that when disconnect()
+    // triggers the auto-connect effect, currentServerId already reflects
+    // the target account (preventing a stale handleConnect from adding
+    // the old account's server to the new account's storage).
     const oldPubkey = useIdentityStore.getState().activeAccount;
-    await setActiveAccount(pubkey);
     switchAppStoreAccount(oldPubkey, pubkey);
+    disconnect();
+    await setActiveAccount(pubkey);
     await refresh();
   }
 
