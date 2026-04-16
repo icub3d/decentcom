@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface AccountInfo {
   pubkey: string;
+  label: string | null;
   active: boolean;
 }
 
@@ -20,6 +21,9 @@ interface IdentityStore {
 
   /** Delete an account from the keychain. */
   deleteAccount: (pubkey: string) => Promise<void>;
+
+  /** Rename an account label. */
+  renameAccount: (pubkey: string, label: string) => Promise<void>;
 }
 
 export const useIdentityStore = create<IdentityStore>()((set) => ({
@@ -61,6 +65,21 @@ export const useIdentityStore = create<IdentityStore>()((set) => ({
     try {
       set({ loading: true, error: null });
       await invoke("delete_account", { pubkey });
+      const accounts = await invoke<AccountInfo[]>("list_accounts");
+      const active = accounts.find((a) => a.active)?.pubkey ?? null;
+      set({ accounts, activeAccount: active, loading: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+        loading: false,
+      });
+    }
+  },
+
+  renameAccount: async (pubkey: string, label: string) => {
+    try {
+      set({ loading: true, error: null });
+      await invoke("rename_account", { pubkey, label });
       const accounts = await invoke<AccountInfo[]>("list_accounts");
       const active = accounts.find((a) => a.active)?.pubkey ?? null;
       set({ accounts, activeAccount: active, loading: false });

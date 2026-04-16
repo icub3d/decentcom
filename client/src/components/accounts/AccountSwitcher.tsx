@@ -11,15 +11,36 @@ function shortPubkey(pubkey: string): string {
   return `${pubkey.slice(0, 6)}…${pubkey.slice(-4)}`;
 }
 
+function displayName(account: AccountInfo): string {
+  if (account.label) {
+    return `${account.label} (${shortPubkey(account.pubkey)})`;
+  }
+  return shortPubkey(account.pubkey);
+}
+
 export function AccountSwitcher({ onSwitchAccount, onAddAccount }: AccountSwitcherProps) {
-  const { accounts, activeAccount, deleteAccount } = useIdentityStore();
+  const { accounts, activeAccount, deleteAccount, renameAccount } = useIdentityStore();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
 
   if (accounts.length === 0) return null;
 
   const handleDelete = async (pubkey: string) => {
     await deleteAccount(pubkey);
     setConfirmDelete(null);
+  };
+
+  const startRename = (account: AccountInfo) => {
+    setEditing(account.pubkey);
+    setEditLabel(account.label ?? "");
+  };
+
+  const commitRename = async () => {
+    if (editing) {
+      await renameAccount(editing, editLabel);
+      setEditing(null);
+    }
   };
 
   return (
@@ -35,20 +56,37 @@ export function AccountSwitcher({ onSwitchAccount, onAddAccount }: AccountSwitch
                 : "hover:bg-ctp-surface0 text-ctp-subtext1 cursor-pointer"
             }`}
           >
-            <button
-              onClick={() => {
-                if (account.pubkey !== activeAccount) {
-                  onSwitchAccount(account.pubkey);
-                }
-              }}
-              className="flex-1 text-left font-mono text-xs truncate"
-              title={account.pubkey}
-            >
-              {account.pubkey === activeAccount && (
-                <span className="mr-1 text-ctp-green">●</span>
-              )}
-              {shortPubkey(account.pubkey)}
-            </button>
+            {editing === account.pubkey ? (
+              <form
+                className="flex-1 flex gap-1"
+                onSubmit={(e) => { e.preventDefault(); void commitRename(); }}
+              >
+                <input
+                  autoFocus
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  onBlur={() => void commitRename()}
+                  placeholder="Account name"
+                  className="flex-1 bg-ctp-surface0 text-ctp-text rounded px-2 py-0.5 text-xs outline-none"
+                />
+              </form>
+            ) : (
+              <button
+                onClick={() => {
+                  if (account.pubkey !== activeAccount) {
+                    onSwitchAccount(account.pubkey);
+                  }
+                }}
+                onDoubleClick={() => startRename(account)}
+                className="flex-1 text-left text-xs truncate"
+                title={`${account.pubkey}\nDouble-click to rename`}
+              >
+                {account.pubkey === activeAccount && (
+                  <span className="mr-1 text-ctp-green">●</span>
+                )}
+                {displayName(account)}
+              </button>
+            )}
             {confirmDelete === account.pubkey ? (
               <div className="flex gap-1">
                 <button

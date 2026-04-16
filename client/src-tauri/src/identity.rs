@@ -13,6 +13,10 @@ const ACCOUNTS_INDEX: &str = "accounts_index";
 fn seed_entry_name(pubkey: &str) -> String {
     format!("seed_{pubkey}")
 }
+/// Prefix for per-account label entries: "label_{pubkey}".
+fn label_entry_name(pubkey: &str) -> String {
+    format!("label_{pubkey}")
+}
 
 /// In-memory active account pubkey. Defaults to first account if not set.
 static ACTIVE_ACCOUNT: Mutex<Option<String>> = Mutex::new(None);
@@ -42,6 +46,7 @@ pub struct IdentityInfo {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AccountInfo {
     pub pubkey: String,
+    pub label: Option<String>,
     pub active: bool,
 }
 
@@ -110,14 +115,23 @@ pub fn list_accounts() -> Result<Vec<AccountInfo>, String> {
     inner_list_accounts().map_err(|e| e.to_string())
 }
 
+fn load_account_label(pubkey: &str) -> Option<String> {
+    let entry = Entry::new(SERVICE_NAME, &label_entry_name(pubkey)).ok()?;
+    entry.get_password().ok()
+}
+
 fn inner_list_accounts() -> Result<Vec<AccountInfo>, IdentityError> {
     let accounts = load_accounts_index()?;
     let active = get_active_pubkey().ok();
     Ok(accounts
         .into_iter()
-        .map(|pk| AccountInfo {
-            active: active.as_deref() == Some(&pk),
-            pubkey: pk,
+        .map(|pk| {
+            let label = load_account_label(&pk);
+            AccountInfo {
+                active: active.as_deref() == Some(&pk),
+                label,
+                pubkey: pk,
+            }
         })
         .collect())
 }
@@ -148,11 +162,13 @@ fn inner_delete_account(pubkey: String) -> Result<(), IdentityError> {
         return Err(IdentityError::Crypto("account not found".into()));
     }
 
-    // Remove the seed from keyring.
-    let entry = Entry::new(SERVICE_NAME, &seed_entry_name(&pubkey))?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => {}
-        Err(e) => return Err(IdentityError::Keyring(e.to_string())),
+    // Remove the seed and label from keyring.
+    for name in [seed_entry_name(&pubkey), label_entry_name(&pubkey)] {
+        let entry = Entry::new(SERVICE_NAME, &name)?;
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(e) => return Err(IdentityError::Keyring(e.to_string())),
+        }
     }
 
     accounts.retain(|pk| pk != &pubkey);
@@ -164,6 +180,30 @@ fn inner_delete_account(pubkey: String) -> Result<(), IdentityError> {
         *lock = None;
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rename_account(pubkey: String, label: String) -> Result<(), String> {
+    inner_rename_account(pubkey, label).map_err(|e| e.to_string())
+}
+
+fn inner_rename_account(pubkey: String, label: String) -> Result<(), IdentityError> {
+    let accounts = load_accounts_index()?;
+    if !accounts.contains(&pubkey) {
+        return Err(IdentityError::Crypto("account not found".into()));
+    }
+    let entry = Entry::new(SERVICE_NAME, &label_entry_name(&pubkey))?;
+    let trimmed = label.trim().to_string();
+    if trimmed.is_empty() {
+        // Clear label.
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(e) => return Err(IdentityError::Keyring(e.to_string())),
+        }
+    } else {
+        entry.set_password(&trimmed)?;
+    }
     Ok(())
 }
 

@@ -136,11 +136,12 @@ def clean_keychain():
         if result.returncode == 0 and result.stdout.strip():
             pubkeys = json.loads(result.stdout.strip())
             for pk in pubkeys:
-                subprocess.run(
-                    ["secret-tool", "clear"] + KR_ATTRS + ["username", f"seed_{pk}"],
-                    capture_output=True, timeout=5,
-                )
-                print(f"  Removed keychain entry seed_{pk[:12]}…")
+                for prefix in ["seed_", "label_"]:
+                    subprocess.run(
+                        ["secret-tool", "clear"] + KR_ATTRS + ["username", f"{prefix}{pk}"],
+                        capture_output=True, timeout=5,
+                    )
+                print(f"  Removed keychain entries for {pk[:12]}…")
     except Exception:
         pass
 
@@ -242,7 +243,13 @@ def store_test_accounts_in_keychain():
             + KR_ATTRS + ["username", f"seed_{user['pubkey']}"],
             input=user["hex_seed"], text=True, capture_output=True, timeout=5,
         )
-        print(f"  Stored seed for {user['name']} ({user['pubkey'][:12]}…)")
+        # Store a friendly label for the account.
+        subprocess.run(
+            ["secret-tool", "store", "--label", f"decentcom label_{user['name']}"]
+            + KR_ATTRS + ["username", f"label_{user['pubkey']}"],
+            input=user["name"].capitalize(), text=True, capture_output=True, timeout=5,
+        )
+        print(f"  Stored seed + label for {user['name']} ({user['pubkey'][:12]}…)")
 
 # ---------------------------------------------------------------------------
 # Database bootstrap (run migrations via server, then insert seed data)

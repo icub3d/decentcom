@@ -14,6 +14,7 @@ pub fn run() {
             identity::list_accounts,
             identity::set_active_account,
             identity::delete_account,
+            identity::rename_account,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
