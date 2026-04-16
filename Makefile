@@ -1,4 +1,4 @@
-.PHONY: help clean setup dev servers client
+.PHONY: help clean setup dev servers client clean-identity
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -9,6 +9,14 @@ clean: ## Remove test databases, media dirs, and OS keychain test entries
 
 setup: clean ## Clean + bootstrap test DBs with users/roles/channels + store keys in keychain
 	python3 scripts/test-setup.py
+
+clean-identity: ## Remove all decentcom keys from the OS keychain (useful during testing)
+	@while secret-tool search application rust-keyring service decentcom 2>&1 | grep -q "attribute.username"; do \
+		username=$$(secret-tool search application rust-keyring service decentcom 2>&1 | grep "attribute.username" | head -1 | awk '{print $$3}'); \
+		echo "Deleting keychain entry: $$username"; \
+		secret-tool clear application rust-keyring service decentcom target default username "$$username"; \
+	done
+	@echo "Keychain cleared."
 
 dev: ## Start all 3 servers + client via overmind (requires overmind)
 	overmind start -f Procfile

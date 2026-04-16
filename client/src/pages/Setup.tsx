@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { IdentityInfo, PublicKeyInfo } from "../hooks/useIdentity";
-import { SeedPhrase } from "./SeedPhrase";
+import { KeySafety } from "./KeySafety";
 import { keyImport, keyBackupReadPubkey } from "../services/identity";
 
 function shortPubkey(pubkey: string): string {
@@ -17,8 +17,8 @@ interface SetupProps {
 }
 
 export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps) {
-  const [view, setView] = useState<"choice" | "generate" | "import" | "backup">("choice");
-  const [seedPhrase, setSeedPhrase] = useState<string[]>([]);
+  const [view, setView] = useState<"choice" | "safety" | "import" | "backup">("choice");
+  const [generatedIdentity, setGeneratedIdentity] = useState<IdentityInfo | null>(null);
   const [importText, setImportText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +33,8 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
       setLoading(true);
       setError(null);
       const info = await onGenerate();
-      setSeedPhrase(info.seed_phrase);
-      setView("generate");
+      setGeneratedIdentity(info);
+      setView("safety");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -99,8 +99,8 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
     setError(null);
   };
 
-  if (view === "generate") {
-    return <SeedPhrase seedPhrase={seedPhrase} onConfirm={onComplete} />;
+  if (view === "safety" && generatedIdentity) {
+    return <KeySafety identity={generatedIdentity} onComplete={onComplete} />;
   }
 
   if (view === "backup") {

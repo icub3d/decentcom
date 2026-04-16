@@ -28,7 +28,7 @@ const FORMAT_VERSION: u8 = 1;
 const EXPECTED_FILE_SIZE: usize = 137;
 
 // Argon2id defaults — strong but reasonable on modern hardware.
-const DEFAULT_MEMORY_KIB: u32 = 256 * 1024; // 256 MiB
+const DEFAULT_MEMORY_KIB: u32 = 64 * 1024; // 64 MiB (3.4× OWASP minimum; old files decrypt fine via header params)
 const DEFAULT_TIME_COST: u32 = 3;
 const DEFAULT_PARALLELISM: u32 = 4;
 
