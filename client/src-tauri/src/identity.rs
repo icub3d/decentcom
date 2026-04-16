@@ -72,7 +72,9 @@ fn load_accounts_index() -> Result<Vec<String>, IdentityError> {
                 serde_json::from_str(&json).unwrap_or_default();
             Ok(accounts)
         }
-        Err(keyring::Error::NoEntry) => Ok(Vec::new()),
+        Err(keyring::Error::NoEntry) => {
+            Ok(Vec::new())
+        }
         Err(e) => Err(IdentityError::Keyring(e.to_string())),
     }
 }

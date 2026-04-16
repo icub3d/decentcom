@@ -29,4 +29,22 @@ describe("App", () => {
       expect(screen.getByText("Create New Identity")).toBeInTheDocument();
     });
   });
+
+  it("does not render Setup full-screen when hasIdentity is true", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "has_identity") return true;
+      if (command === "get_public_key") return { pubkey: "testkey123" };
+      if (command === "list_accounts")
+        return [{ pubkey: "testkey123", label: null, active: true }];
+      if (command === "ping") return "pong";
+      return null;
+    });
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
+      expect(screen.queryByText("Create New Identity")).not.toBeInTheDocument();
+    });
+  });
 });

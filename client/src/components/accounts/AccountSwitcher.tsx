@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useIdentityStore, type AccountInfo } from "../../stores/identityStore";
+import { useIdentity } from "../../hooks/useIdentity";
+import { switchAppStoreAccount } from "../../stores/appStore";
+import { Modal } from "../ui/Modal";
+import { Setup } from "../../pages/Setup";
 
 interface AccountSwitcherProps {
   onSwitchAccount: (pubkey: string) => void;
-  onAddAccount: () => void;
 }
 
 function shortPubkey(pubkey: string): string {
@@ -18,8 +21,10 @@ function displayName(account: AccountInfo): string {
   return shortPubkey(account.pubkey);
 }
 
-export function AccountSwitcher({ onSwitchAccount, onAddAccount }: AccountSwitcherProps) {
+export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
   const { accounts, activeAccount, deleteAccount, renameAccount } = useIdentityStore();
+  const { generateIdentity, importIdentity, refresh } = useIdentity();
+  const [showSetup, setShowSetup] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
@@ -43,8 +48,29 @@ export function AccountSwitcher({ onSwitchAccount, onAddAccount }: AccountSwitch
     }
   };
 
+  const handleSetupComplete = async () => {
+    setShowSetup(false);
+    await refresh();
+    const newActive = useIdentityStore.getState().activeAccount;
+    if (newActive && newActive !== activeAccount) {
+      switchAppStoreAccount(activeAccount, newActive);
+      onSwitchAccount(newActive);
+    }
+  };
+
   return (
-    <div className="bg-ctp-mantle rounded-xl border border-ctp-overlay0 p-4 text-ctp-text">
+    <>
+      {showSetup && (
+        <Modal onClose={() => setShowSetup(false)}>
+          <Setup
+            onGenerate={generateIdentity}
+            onImport={importIdentity}
+            onComplete={() => void handleSetupComplete()}
+            onCancel={() => setShowSetup(false)}
+          />
+        </Modal>
+      )}
+      <div className="bg-ctp-mantle rounded-xl border border-ctp-overlay0 p-4 text-ctp-text">
       <h3 className="text-sm font-semibold text-ctp-subtext1 mb-2">Accounts</h3>
       <div className="space-y-1">
         {accounts.map((account: AccountInfo) => (
@@ -115,11 +141,12 @@ export function AccountSwitcher({ onSwitchAccount, onAddAccount }: AccountSwitch
         ))}
       </div>
       <button
-        onClick={onAddAccount}
+        onClick={() => setShowSetup(true)}
         className="mt-2 w-full py-2 text-sm text-ctp-subtext1 hover:text-ctp-blue hover:bg-ctp-surface0 rounded-lg transition border border-dashed border-ctp-overlay0"
       >
         + Add Account
       </button>
     </div>
+    </>
   );
 }

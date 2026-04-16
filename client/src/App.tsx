@@ -31,7 +31,6 @@ function App() {
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
-  const [addingAccount, setAddingAccount] = useState(false);
 
   const activeAccount = useIdentityStore((s) => s.activeAccount);
   const setActiveAccount = useIdentityStore((s) => s.setActiveAccount);
@@ -73,7 +72,6 @@ function App() {
     if (
       hasIdentity &&
       !loading &&
-      !addingAccount &&
       currentServerId &&
       status === "disconnected" &&
       !connectLoading &&
@@ -81,7 +79,7 @@ function App() {
     ) {
       handleConnect(currentServerId);
     }
-  }, [currentServerId, hasIdentity, loading, status, addingAccount, connectLoading, handleConnect]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect]);
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);
@@ -101,23 +99,19 @@ function App() {
   }
 
   async function handleSwitchAccount(pubkey: string) {
-    // Disconnect current session, switch backend active key, reload store.
-    disconnect();
-    const oldPubkey = activeAccount;
-    await setActiveAccount(pubkey);
+    // Switch the app store BEFORE disconnecting so that when disconnect()
+    // triggers the auto-connect effect, currentServerId already reflects
+    // the target account (preventing a stale handleConnect from adding
+    // the old account's server to the new account's storage).
+    const oldPubkey = useIdentityStore.getState().activeAccount;
     switchAppStoreAccount(oldPubkey, pubkey);
+    disconnect();
+    await setActiveAccount(pubkey);
     await refresh();
   }
 
-  function handleAddAccount() {
-    setAddingAccount(true);
-  }
-
-  async function handleAddAccountComplete() {
-    setAddingAccount(false);
+  async function handleFirstRunComplete() {
     await refresh();
-    // The newly generated/imported account is now the active one in the backend.
-    // Re-read from identityStore to get the updated pubkey.
     const newActive = useIdentityStore.getState().activeAccount;
     if (newActive) {
       switchAppStoreAccount(activeAccount, newActive);
@@ -131,14 +125,13 @@ function App() {
         <div className="animate-pulse">Loading identity...</div>
       </div>
     );
-  } else if (!hasIdentity || addingAccount) {
+  } else if (!hasIdentity) {
     content = (
       <main className="flex-1 flex items-center justify-center bg-ctp-base p-4 text-ctp-text">
         <Setup
           onGenerate={generateIdentity}
           onImport={importIdentity}
-          onComplete={() => void handleAddAccountComplete()}
-          onCancel={addingAccount ? () => setAddingAccount(false) : undefined}
+          onComplete={() => void handleFirstRunComplete()}
         />
       </main>
     );
@@ -176,7 +169,6 @@ function App() {
         )}
         <AppShell
           onSwitchAccount={handleSwitchAccount}
-          onAddAccount={handleAddAccount}
         />
       </>
     );

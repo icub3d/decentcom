@@ -26,7 +26,6 @@ interface ServerSidebarProps {
   currentServerId: string | null;
   onSelectServer: (id: string) => void;
   onSwitchAccount: (pubkey: string) => void;
-  onAddAccount: () => void;
 }
 
 type OpenPanel = null | "user-settings" | "server-settings";
@@ -50,7 +49,7 @@ function initials(name: string | undefined, address: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwitchAccount, onAddAccount }: ServerSidebarProps) {
+export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwitchAccount }: ServerSidebarProps) {
   const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
 
@@ -83,7 +82,10 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      // Ignore clicks inside portaled modals so they don't close the sidebar panel
+      if (target.closest("[data-modal-backdrop]")) return;
+      if (sidebarRef.current && !sidebarRef.current.contains(target)) {
         setOpenPanel(null);
       }
     }
@@ -192,7 +194,6 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
           <div className="grid gap-3">
             <AccountSwitcher
               onSwitchAccount={onSwitchAccount}
-              onAddAccount={onAddAccount}
             />
             <ProfileEditor />
             <KeyBackupPanel onImported={onSwitchAccount} />
