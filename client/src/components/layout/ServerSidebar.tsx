@@ -82,7 +82,10 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      // Ignore clicks inside portaled modals so they don't close the sidebar panel
+      if (target.closest("[data-modal-backdrop]")) return;
+      if (sidebarRef.current && !sidebarRef.current.contains(target)) {
         setOpenPanel(null);
       }
     }

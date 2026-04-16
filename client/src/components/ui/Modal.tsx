@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   children: ReactNode;
@@ -24,13 +25,15 @@ export function Modal({ children, onClose }: ModalProps) {
     }
   }
 
-  return (
+  return createPortal(
     <div
       ref={backdropRef}
+      data-modal-backdrop
       onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
       <div className="max-h-[90vh] overflow-y-auto">{children}</div>
-    </div>
+    </div>,
+    document.body,
   );
 }
