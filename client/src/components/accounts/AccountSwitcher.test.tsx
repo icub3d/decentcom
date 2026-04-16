@@ -174,6 +174,35 @@ describe("AccountSwitcher", () => {
     expect(screen.queryByText("Yes")).not.toBeInTheDocument();
   });
 
+  it("renders backup button only on the active account", () => {
+    seedAccounts();
+    render(<AccountSwitcher onSwitchAccount={onSwitch} />);
+
+    const backupButtons = screen.getAllByTitle("Export key backup");
+    expect(backupButtons).toHaveLength(1);
+  });
+
+  it("clicking backup button opens KeyExport modal", () => {
+    seedAccounts();
+    render(<AccountSwitcher onSwitchAccount={onSwitch} />);
+
+    fireEvent.click(screen.getByTitle("Export key backup"));
+
+    expect(screen.getByText("Export Key Backup")).toBeInTheDocument();
+  });
+
+  it("closing backup modal hides KeyExport", () => {
+    seedAccounts();
+    render(<AccountSwitcher onSwitchAccount={onSwitch} />);
+
+    fireEvent.click(screen.getByTitle("Export key backup"));
+    expect(screen.getByText("Export Key Backup")).toBeInTheDocument();
+
+    // Close via Escape key
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByText("Export Key Backup")).not.toBeInTheDocument();
+  });
+
   it("renders nothing when accounts list is empty", () => {
     useIdentityStore.setState({ accounts: [], activeAccount: null, loading: false, error: null });
     const { container } = render(

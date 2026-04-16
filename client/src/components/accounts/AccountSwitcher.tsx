@@ -4,6 +4,7 @@ import { useIdentity } from "../../hooks/useIdentity";
 import { switchAppStoreAccount } from "../../stores/appStore";
 import { Modal } from "../ui/Modal";
 import { Setup } from "../../pages/Setup";
+import { KeyExport } from "../backup/KeyExport";
 
 interface AccountSwitcherProps {
   onSwitchAccount: (pubkey: string) => void;
@@ -25,6 +26,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
   const { accounts, activeAccount, deleteAccount, renameAccount } = useIdentityStore();
   const { generateIdentity, importIdentity, refresh } = useIdentity();
   const [showSetup, setShowSetup] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
@@ -68,6 +70,13 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
             onComplete={() => void handleSetupComplete()}
             onCancel={() => setShowSetup(false)}
           />
+        </Modal>
+      )}
+      {showBackup && (
+        <Modal onClose={() => setShowBackup(false)}>
+          <div className="p-4 w-80">
+            <KeyExport />
+          </div>
         </Modal>
       )}
       <div className="bg-ctp-mantle rounded-xl border border-ctp-overlay0 p-4 text-ctp-text">
@@ -129,13 +138,24 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmDelete(account.pubkey)}
-                className="text-ctp-overlay1 hover:text-ctp-red text-xs shrink-0"
-                title="Delete account"
-              >
-                🗑
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {account.pubkey === activeAccount && (
+                  <button
+                    onClick={() => setShowBackup(true)}
+                    className="text-ctp-overlay1 hover:text-ctp-yellow text-xs"
+                    title="Export key backup"
+                  >
+                    💾
+                  </button>
+                )}
+                <button
+                  onClick={() => setConfirmDelete(account.pubkey)}
+                  className="text-ctp-overlay1 hover:text-ctp-red text-xs"
+                  title="Delete account"
+                >
+                  🗑
+                </button>
+              </div>
             )}
           </div>
         ))}
