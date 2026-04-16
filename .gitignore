@@ -12,3 +12,4 @@ client/dist/
 decentcom.toml
 server/media
 __pycache__/
+identity-backup.dckb
