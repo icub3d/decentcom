@@ -360,8 +360,12 @@ pub struct BackupPubkeyInfo {
 }
 
 #[tauri::command]
-pub fn key_export(passphrase: String, path: String) -> Result<(), String> {
-    inner_key_export(&passphrase, &path).map_err(|e| e.to_string())
+pub async fn key_export(passphrase: String, path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        inner_key_export(&passphrase, &path).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn inner_key_export(pass: &str, path: &str) -> Result<(), IdentityError> {
@@ -375,8 +379,12 @@ fn inner_key_export(pass: &str, path: &str) -> Result<(), IdentityError> {
 }
 
 #[tauri::command]
-pub fn key_import(passphrase: String, path: String) -> Result<PublicKeyInfo, String> {
-    inner_key_import(&passphrase, &path).map_err(|e| e.to_string())
+pub async fn key_import(passphrase: String, path: String) -> Result<PublicKeyInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        inner_key_import(&passphrase, &path).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn inner_key_import(pass: &str, path: &str) -> Result<PublicKeyInfo, IdentityError> {
