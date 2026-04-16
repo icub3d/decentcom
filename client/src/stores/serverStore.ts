@@ -98,6 +98,21 @@ function sortChannels(channels: Channel[]): Channel[] {
   return [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
 }
 
+/** Merge two message arrays, deduplicate by ID, and sort newest-first by creation time. */
+function mergeMessages(existing: Message[], incoming: Message[]): Message[] {
+  const seen = new Set<string>();
+  const merged = [...existing, ...incoming].filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  merged.sort((a, b) => {
+    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1;
+    return a.id < b.id ? 1 : -1;
+  });
+  return merged;
+}
+
 export const useServerStore = create<ServerStore>((set, get) => ({
   serverId: "",
   address: "",
@@ -281,16 +296,19 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       },
     );
 
-    set((prev) => ({
-      messages: {
-        ...prev.messages,
-        [channelId]: [...existing, ...page.messages],
-      },
-      hasMore: {
-        ...prev.hasMore,
-        [channelId]: page.has_more,
-      },
-    }));
+    set((prev) => {
+      const current = prev.messages[channelId] ?? [];
+      return {
+        messages: {
+          ...prev.messages,
+          [channelId]: mergeMessages(current, page.messages),
+        },
+        hasMore: {
+          ...prev.hasMore,
+          [channelId]: page.has_more,
+        },
+      };
+    });
   },
 
   createChannel: async (req: CreateChannelRequest) => {
@@ -325,7 +343,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           return {
             messages: {
               ...state.messages,
-              [message.channel_id]: [message, ...existing],
+              [message.channel_id]: mergeMessages(existing, [message]),
             },
           };
         }
