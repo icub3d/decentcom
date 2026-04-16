@@ -14,7 +14,13 @@ Create a GitHub issue for the feature: **$ARGUMENTS**
 
 1. **Understand the feature.** Read the design documents in `docs/design/` to understand how this feature fits into the overall architecture. Ask clarifying questions if the scope is ambiguous.
 
-2. **Research the codebase.** Look at existing code to understand what already exists, what can be reused, and where the feature would live.
+2. **Research the codebase in a worktree.** To avoid interfering with other agent work, create a new git worktree for research if you plan to run tests or make experimental changes:
+   ```
+   git fetch origin
+   git worktree add ../research-<feature-name> origin/main
+   cd ../research-<feature-name>
+   ```
+   Look at existing code to understand what already exists, what can be reused, and where the feature would live.
 
 3. **Check for an existing issue.** Run:
    ```
@@ -38,6 +44,12 @@ Create a GitHub issue for the feature: **$ARGUMENTS**
    ```
 
 7. **Present the issue URL** to the user for review. Do not start implementation — that is a separate step.
+
+8. **Cleanup.** If you created a research worktree, remove it:
+   ```
+   cd <original-project-dir>
+   git worktree remove ../research-<feature-name>
+   ```
 
 ## Issue Body Structure
 

@@ -80,3 +80,11 @@ The following Claude Code skills are available and should be used where appropri
 - **`/feature`** — create a GitHub issue for a new feature.
 - **`/implement`** — implement a feature from its GitHub issue.
 - **`/verify`** — verify a feature's implementation against its GitHub issue.
+
+## Git Worktrees
+
+When working on features or verifying pull requests, always use `git worktree` to avoid interfering with other active agents or the main development branch. This ensures each task has its own isolated environment.
+
+- **Implementation:** Create a new worktree for the feature branch: `git worktree add ../feature-<number>-<slug> -b feature/<number>-<slug> main`.
+- **Verification:** Create a new worktree to review a PR: `git worktree add ../verify-<number> <branch-name>`.
+- **Cleanup:** Always remove the worktree when finished: `git worktree remove ../<dir-name>`.

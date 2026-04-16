@@ -28,15 +28,17 @@ Verify the implementation of: **$ARGUMENTS**
    ```
    Read the requirements, task list, and test list from the issue body.
 
-3. **Review the PR diff.** Pull the branch and review the changes:
+3. **Review the PR diff using a worktree.** To avoid interfering with other agent work, create a new git worktree to review the PR:
    ```
    git fetch origin
-   git switch <branch-name>
-   git log --oneline main..<branch-name>
+   git worktree add ../verify-<pr-number> origin/<branch-name>
+   cd ../verify-<pr-number>
+   git log --oneline origin/main..HEAD
    ```
+   Perform all verification work (testing, linting) within this worktree.
    Then review the diff:
    ```
-   git --no-pager diff main...<branch-name> --stat
+   git --no-pager diff origin/main...HEAD --stat
    ```
    Read changed files to verify they match the issue requirements. Focus on:
    - Do the code changes implement what the issue specifies?
@@ -73,10 +75,11 @@ Verify the implementation of: **$ARGUMENTS**
    ```
    GH_PAGER= GH_PROMPT_DISABLED=1 gh pr merge <pr-number> --squash --delete-branch
    ```
-   After merging, switch back to main:
+
+8. **Cleanup.** Remove the worktree when finished:
    ```
-   git switch main
-   git pull --ff-only
+   cd <original-project-dir>
+   git worktree remove ../verify-<pr-number>
    ```
 
 ## Guidelines

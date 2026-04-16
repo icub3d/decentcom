@@ -22,12 +22,13 @@ Implement the feature: **$ARGUMENTS**
    ```
    Read the issue body in full — it contains the requirements, design, task list, and test list.
 
-2. **Create a feature branch.** Branch from `main` using the naming convention `feature/<issue-number>-<short-slug>`:
+2. **Create a feature branch using a worktree.** To avoid interfering with other agent work, create a new git worktree for this feature. Work in the new directory:
    ```
-   git switch main
-   git pull --ff-only
-   git switch -c feature/<number>-<short-slug>
+   git fetch origin
+   git worktree add ../feature-<number>-<short-slug> -b feature/<number>-<short-slug> origin/main
+   cd ../feature-<number>-<short-slug>
    ```
+   Perform all implementation work within this worktree.
    For example, issue #14 "User Profiles" → `feature/14-user-profiles`.
 
 3. **Read the design docs.** Check any design documents in `docs/design/` referenced by the issue for additional context.
@@ -87,6 +88,12 @@ Implement the feature: **$ARGUMENTS**
    Do **not** close the issue — it will be closed automatically when the PR merges via the `Closes #<number>` reference.
 
 10. **Report.** Summarize what was built, any deviations from the plan, and provide the PR URL for review.
+
+11. **Cleanup.** Remove the worktree when finished:
+    ```
+    cd <original-project-dir>
+    git worktree remove ../feature-<number>-<short-slug>
+    ```
 
 ## Guidelines
 
