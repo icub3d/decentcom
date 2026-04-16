@@ -224,14 +224,16 @@ pub trait AttachmentStore: Send + Sync {
 
 #[async_trait]
 pub trait ReactionStore: Send + Sync {
-    /// Add or replace the current user's reaction. Returns (reaction, replaced_emoji).
-    /// If the user already had the same emoji, removes it (toggle) and returns None.
+    /// Add or replace the current user's reaction.
+    /// Returns `Some((reaction, replaced_emoji))` on add/replace, where `replaced_emoji` is
+    /// `Some(old_emoji)` when a previous reaction was overwritten.
+    /// Returns `None` when the same emoji was toggled off (removed).
     async fn upsert_reaction(
         &self,
         message_id: &str,
         user_id: &str,
         emoji: &str,
-    ) -> Result<Option<Reaction>, StorageError>;
+    ) -> Result<Option<(Reaction, Option<String>)>, StorageError>;
 
     async fn get_user_reaction(
         &self,

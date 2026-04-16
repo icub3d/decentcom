@@ -86,22 +86,47 @@ pub(super) async fn put_reaction(
         .await
         .map_err(internal)?;
 
-    let op = if result.is_some() {
-        Op::ReactionAdd
-    } else {
-        Op::ReactionRemove
-    };
-
-    if let Some(payload) = event_json(
-        op,
-        ReactionEventData {
-            channel_id: channel_id.clone(),
-            message_id: message_id.clone(),
-            user_id: auth.user_id.clone(),
-            emoji: emoji.clone(),
-        },
-    ) {
-        state.gateway.broadcast_to_channel(&channel_id, &payload);
+    match result {
+        Some((_reaction, replaced_emoji)) => {
+            // If a different emoji was replaced, broadcast its removal first.
+            if let Some(old_emoji) = replaced_emoji {
+                if let Some(payload) = event_json(
+                    Op::ReactionRemove,
+                    ReactionEventData {
+                        channel_id: channel_id.clone(),
+                        message_id: message_id.clone(),
+                        user_id: auth.user_id.clone(),
+                        emoji: old_emoji,
+                    },
+                ) {
+                    state.gateway.broadcast_to_channel(&channel_id, &payload);
+                }
+            }
+            if let Some(payload) = event_json(
+                Op::ReactionAdd,
+                ReactionEventData {
+                    channel_id: channel_id.clone(),
+                    message_id: message_id.clone(),
+                    user_id: auth.user_id.clone(),
+                    emoji: emoji.clone(),
+                },
+            ) {
+                state.gateway.broadcast_to_channel(&channel_id, &payload);
+            }
+        }
+        None => {
+            if let Some(payload) = event_json(
+                Op::ReactionRemove,
+                ReactionEventData {
+                    channel_id: channel_id.clone(),
+                    message_id: message_id.clone(),
+                    user_id: auth.user_id.clone(),
+                    emoji: emoji.clone(),
+                },
+            ) {
+                state.gateway.broadcast_to_channel(&channel_id, &payload);
+            }
+        }
     }
 
     Ok(StatusCode::OK)

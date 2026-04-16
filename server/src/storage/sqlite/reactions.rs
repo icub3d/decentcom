@@ -22,8 +22,7 @@ impl ReactionStore for SqliteStorage {
         message_id: &str,
         user_id: &str,
         emoji: &str,
-    ) -> Result<Option<Reaction>, StorageError> {
-        // Check if user already has this exact emoji — toggle (remove) it.
+    ) -> Result<Option<(Reaction, Option<String>)>, StorageError> {
         let existing: Option<String> =
             sqlx::query_scalar("SELECT emoji FROM reactions WHERE message_id = ? AND user_id = ?")
                 .bind(message_id)
@@ -58,7 +57,7 @@ impl ReactionStore for SqliteStorage {
         .fetch_one(self.pool())
         .await?;
 
-        Ok(Some(row_to_reaction(row)?))
+        Ok(Some((row_to_reaction(row)?, existing)))
     }
 
     async fn get_user_reaction(
@@ -172,11 +171,11 @@ mod tests {
     #[tokio::test]
     async fn add_reaction_creates_record() {
         let (s, u1, _u2, msg) = setup().await;
-        let r = s.upsert_reaction(&msg, &u1, "👍").await.unwrap();
-        assert!(r.is_some());
-        let r = r.unwrap();
+        let result = s.upsert_reaction(&msg, &u1, "👍").await.unwrap();
+        let (r, replaced) = result.unwrap();
         assert_eq!(r.emoji, "👍");
         assert_eq!(r.user_id, u1);
+        assert!(replaced.is_none());
     }
 
     #[tokio::test]
@@ -193,7 +192,9 @@ mod tests {
     async fn different_emoji_replaces_reaction() {
         let (s, u1, _u2, msg) = setup().await;
         s.upsert_reaction(&msg, &u1, "👍").await.unwrap();
-        s.upsert_reaction(&msg, &u1, "❤️").await.unwrap();
+        let result = s.upsert_reaction(&msg, &u1, "❤️").await.unwrap();
+        let (_r, replaced) = result.unwrap();
+        assert_eq!(replaced.as_deref(), Some("👍"));
         let counts = s.list_reaction_counts(&msg, &u1).await.unwrap();
         assert_eq!(counts.len(), 1);
         assert_eq!(counts[0].emoji, "❤️");
