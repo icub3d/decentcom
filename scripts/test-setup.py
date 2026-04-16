@@ -118,26 +118,39 @@ def clean_webview_data():
         print(f"  No WebView data to clean")
 
 def clean_keychain():
-    """Remove all decentcom test entries from the OS keychain."""
+    """Remove all decentcom test entries from the OS keychain.
+
+    The Rust `keyring` crate (v3+) stores entries with attributes:
+      application=rust-keyring, service=<svc>, target=default, username=<key>
+    We must match these attributes when looking up and clearing entries.
+    We also clean any legacy entries that used the simpler schema.
+    """
+    KR_ATTRS = ["application", "rust-keyring", "service", KEYCHAIN_SERVICE, "target", "default"]
+
     # First read the accounts index to find per-account seeds.
     try:
         result = subprocess.run(
-            ["secret-tool", "lookup", "service", KEYCHAIN_SERVICE, "username", "accounts_index"],
+            ["secret-tool", "lookup"] + KR_ATTRS + ["username", "accounts_index"],
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             pubkeys = json.loads(result.stdout.strip())
             for pk in pubkeys:
                 subprocess.run(
-                    ["secret-tool", "clear", "service", KEYCHAIN_SERVICE, "username", f"seed_{pk}"],
+                    ["secret-tool", "clear"] + KR_ATTRS + ["username", f"seed_{pk}"],
                     capture_output=True, timeout=5,
                 )
                 print(f"  Removed keychain entry seed_{pk[:12]}…")
     except Exception:
         pass
 
-    # Clear the index itself and legacy entry.
-    for name in ["accounts_index", "master_privkey_seed"]:
+    # Clear the index itself and legacy entries.
+    for name in ["accounts_index", "master_privkey_seed", "master_privkey"]:
+        subprocess.run(
+            ["secret-tool", "clear"] + KR_ATTRS + ["username", name],
+            capture_output=True, timeout=5,
+        )
+        # Also clear legacy (non-keyring) format if present.
         subprocess.run(
             ["secret-tool", "clear", "service", KEYCHAIN_SERVICE, "username", name],
             capture_output=True, timeout=5,
@@ -206,21 +219,27 @@ def seed_localstorage():
 
 
 def store_test_accounts_in_keychain():
-    """Store the test user seeds in the OS keychain so the client can use them."""
+    """Store the test user seeds in the OS keychain so the Tauri client can use them.
+
+    The Rust `keyring` crate (v3+) looks up entries with:
+      application=rust-keyring, service=decentcom, target=default, username=<key>
+    We must create entries with these exact attributes.
+    """
+    KR_ATTRS = ["application", "rust-keyring", "service", KEYCHAIN_SERVICE, "target", "default"]
     pubkeys = [u["pubkey"] for u in USERS.values()]
     index_json = json.dumps(pubkeys)
 
     subprocess.run(
-        ["secret-tool", "store", "--label", "decentcom accounts_index",
-         "service", KEYCHAIN_SERVICE, "username", "accounts_index"],
+        ["secret-tool", "store", "--label", "decentcom accounts_index"]
+        + KR_ATTRS + ["username", "accounts_index"],
         input=index_json, text=True, capture_output=True, timeout=5,
     )
     print(f"  Stored accounts_index with {len(pubkeys)} accounts")
 
     for user in USERS.values():
         subprocess.run(
-            ["secret-tool", "store", "--label", f"decentcom seed_{user['name']}",
-             "service", KEYCHAIN_SERVICE, "username", f"seed_{user['pubkey']}"],
+            ["secret-tool", "store", "--label", f"decentcom seed_{user['name']}"]
+            + KR_ATTRS + ["username", f"seed_{user['pubkey']}"],
             input=user["hex_seed"], text=True, capture_output=True, timeout=5,
         )
         print(f"  Stored seed for {user['name']} ({user['pubkey'][:12]}…)")
