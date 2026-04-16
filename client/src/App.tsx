@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ServerConnect } from "./components/connection/ServerConnect";
 import { JoinByInvite } from "./components/invites/JoinByInvite";
@@ -55,6 +55,20 @@ function App() {
     }
   }, [status]);
 
+  const handleConnect = useCallback(async (address: string) => {
+    setConnectLoading(true);
+    setConnectError(null);
+    try {
+      const info = await getServerInfo(address);
+      await connect(address);
+      addServer(address, info.name);
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [connect, addServer]);
+
   useEffect(() => {
     if (
       hasIdentity &&
@@ -67,21 +81,7 @@ function App() {
     ) {
       handleConnect(currentServerId);
     }
-  }, [currentServerId, hasIdentity, loading, status, addingAccount]);
-
-  async function handleConnect(address: string) {
-    setConnectLoading(true);
-    setConnectError(null);
-    try {
-      const info = await getServerInfo(address);
-      await connect(address);
-      addServer(address, info.name);
-    } catch (err) {
-      setConnectError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setConnectLoading(false);
-    }
-  }
+  }, [currentServerId, hasIdentity, loading, status, addingAccount, connectLoading, handleConnect]);
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);

@@ -10,6 +10,7 @@ interface SignatureInfo {
 
 export interface AccountInfo {
   pubkey: string;
+  label: string | null;
   active: boolean;
 }
 
@@ -33,4 +34,8 @@ export async function setActiveAccount(pubkey: string): Promise<void> {
 
 export async function deleteAccount(pubkey: string): Promise<void> {
   await invoke("delete_account", { pubkey });
+}
+
+export async function renameAccount(pubkey: string, label: string): Promise<void> {
+  await invoke("rename_account", { pubkey, label });
 }
