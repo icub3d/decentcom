@@ -11,10 +11,9 @@ import { ServerSidebar } from "./ServerSidebar";
 
 export interface AppShellProps {
   onSwitchAccount: (pubkey: string) => void;
-  onAddAccount: () => void;
 }
 
-export function AppShell({ onSwitchAccount, onAddAccount }: AppShellProps) {
+export function AppShell({ onSwitchAccount }: AppShellProps) {
   const { currentServerId, servers, setCurrentServer } = useAppStore();
   const {
     address,
@@ -89,7 +88,6 @@ export function AppShell({ onSwitchAccount, onAddAccount }: AppShellProps) {
         currentServerId={currentServerId}
         onSelectServer={setCurrentServer}
         onSwitchAccount={onSwitchAccount}
-        onAddAccount={onAddAccount}
       />
       <ChannelSidebar
         channels={channels}
