@@ -2,6 +2,7 @@ import type { Message } from "../../stores/serverStore";
 import { useMembersStore } from "../../stores/members";
 import { Avatar } from "../profile/Avatar";
 import { MessageAttachment } from "./MessageAttachment";
+import { ReactionBar } from "./ReactionBar";
 
 interface MessageItemProps {
   message: Message;
@@ -55,6 +56,11 @@ export function MessageItem({ message }: MessageItemProps) {
             )}
           </>
         )}
+        <ReactionBar
+          channelId={message.channel_id}
+          messageId={message.id}
+          reactions={message.reactions ?? []}
+        />
       </div>
     </article>
   );
