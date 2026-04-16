@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { EMOJI_CATEGORIES, EMOJIS, type EmojiCategory } from "../../data/emojis";
 
 interface EmojiPickerProps {
+  /** The trigger element used to position the picker above it. */
+  anchorRef: React.RefObject<HTMLElement | null>;
   onSelect: (emoji: string) => void;
   onClose: () => void;
 }
@@ -18,22 +21,32 @@ const CATEGORY_ICONS: Record<EmojiCategory, string> = {
   Symbols: "✅",
 };
 
-export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
+const PICKER_WIDTH = 288; // w-72
+
+export function EmojiPicker({ anchorRef, onSelect, onClose }: EmojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<EmojiCategory>(EMOJI_CATEGORIES[0]);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const filtered = EMOJIS.filter((e) => e.category === activeCategory);
 
+  // Compute position from anchor; falls back to 0,0 in test environments where anchor is null.
+  const rect = anchorRef.current?.getBoundingClientRect() ?? null;
+  const top = rect ? rect.top - 8 : 0;
+  const left = rect ? rect.right - PICKER_WIDTH : 0;
+
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const outsidePicker = !pickerRef.current?.contains(target);
+      const outsideAnchor = !anchorRef.current?.contains(target);
+      if (outsidePicker && outsideAnchor) {
         onClose();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   // Close on Escape
   useEffect(() => {
@@ -46,10 +59,11 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={pickerRef}
-      className="absolute bottom-full right-0 mb-2 w-72 rounded-lg border border-ctp-surface1 bg-ctp-surface0 shadow-lg"
+      style={{ position: "fixed", top: `${top}px`, left: `${left}px`, transform: "translateY(-100%)" }}
+      className="z-50 w-72 rounded-lg border border-ctp-surface1 bg-ctp-surface0 shadow-lg"
       role="dialog"
       aria-label="Emoji picker"
     >
@@ -88,6 +102,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { CreateChannelRequest, UpdateChannelRequest } from "../api/channels";
 import * as channelsApi from "../api/channels";
 import type { Attachment } from "../api/media";
+import type { ReactionSummary } from "../api/reactions";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
 import { ApiError, apiRequest } from "../services/api";
@@ -28,6 +29,7 @@ export interface Message {
   edited_at: string | null;
   deleted: boolean;
   attachments: Attachment[];
+  reactions: ReactionSummary[];
 }
 
 interface ChannelsResponse {
@@ -41,12 +43,20 @@ interface MessagePage {
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "reconnecting";
 
+export interface ReactionEvent {
+  channel_id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+}
+
 export interface GatewayEvent {
   op: string;
   d:
     | Message
     | Channel
     | Role
+    | ReactionEvent
     | { id: string; channel_id?: string }
     | { user_id: string; role_id: string }
     | { user_id: string; pubkey: string; roles: string[]; joined_at: string }
@@ -465,6 +475,49 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         case "MEMBER_UPDATE": {
           useMembersStore.getState().applyGatewayEvent(event);
           return {};
+        }
+        case "REACTION_ADD": {
+          const ev = event.d as ReactionEvent;
+          const existing = state.messages[ev.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [ev.channel_id]: existing.map((m) => {
+                if (m.id !== ev.message_id) return m;
+                const reactions = m.reactions.filter((r) => r.emoji !== ev.emoji);
+                const prev = m.reactions.find((r) => r.emoji === ev.emoji);
+                reactions.push({
+                  emoji: ev.emoji,
+                  count: (prev?.count ?? 0) + 1,
+                  me: ev.user_id === state.sessionUserId ? true : (prev?.me ?? false),
+                });
+                return { ...m, reactions };
+              }),
+            },
+          };
+        }
+        case "REACTION_REMOVE": {
+          const ev = event.d as ReactionEvent;
+          const existing = state.messages[ev.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [ev.channel_id]: existing.map((m) => {
+                if (m.id !== ev.message_id) return m;
+                const reactions = m.reactions
+                  .map((r) => {
+                    if (r.emoji !== ev.emoji) return r;
+                    return {
+                      ...r,
+                      count: r.count - 1,
+                      me: ev.user_id === state.sessionUserId ? false : r.me,
+                    };
+                  })
+                  .filter((r) => r.count > 0);
+                return { ...m, reactions };
+              }),
+            },
+          };
         }
         default:
           return {};

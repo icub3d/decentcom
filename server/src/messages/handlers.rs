@@ -7,7 +7,8 @@ use shared::gateway::Op;
 use crate::attachments::models::AttachmentResponse;
 use crate::gateway::events::event_json;
 use crate::messages::models::{
-    CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, UpdateMessageRequest,
+    CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, ReactionSummary,
+    UpdateMessageRequest,
 };
 use crate::permissions::{
     effective_permissions, has_permission, UserPermissions, MANAGE_MESSAGES, READ_MESSAGES,
@@ -86,6 +87,30 @@ fn validate_message_content(content: &str, max_len: usize) -> Result<(), (Status
     Ok(())
 }
 
+async fn enrich_message(
+    state: &AppState,
+    message: crate::storage::models::Message,
+    viewer_id: &str,
+) -> Result<MessageResponse, (StatusCode, Json<ErrorBody>)> {
+    let atts = state
+        .storage
+        .list_attachments_for_message(&message.id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(AttachmentResponse::from)
+        .collect();
+    let reactions = state
+        .storage
+        .list_reaction_counts(&message.id, viewer_id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(ReactionSummary::from)
+        .collect();
+    Ok(MessageResponse::from_message(message, atts, reactions))
+}
+
 async fn ensure_channel_exists(
     state: &AppState,
     channel_id: &str,
@@ -148,7 +173,7 @@ pub(super) async fn create_message(
         Vec::new()
     };
 
-    let response = MessageResponse::from_message(message, attachments);
+    let response = MessageResponse::from_message(message, attachments, Vec::new());
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);
@@ -191,15 +216,7 @@ pub(super) async fn list_messages(
 
     let mut messages = Vec::with_capacity(items.len());
     for item in items {
-        let atts = state
-            .storage
-            .list_attachments_for_message(&item.id)
-            .await
-            .map_err(internal)?
-            .into_iter()
-            .map(AttachmentResponse::from)
-            .collect();
-        messages.push(MessageResponse::from_message(item, atts));
+        messages.push(enrich_message(&state, item, &auth.user_id).await?);
     }
     Ok(Json(MessagePage { messages, has_more }))
 }
@@ -228,16 +245,7 @@ pub(super) async fn get_message(
         return Err(not_found("message not found"));
     }
 
-    let atts = state
-        .storage
-        .list_attachments_for_message(&message.id)
-        .await
-        .map_err(internal)?
-        .into_iter()
-        .map(AttachmentResponse::from)
-        .collect();
-
-    Ok(Json(MessageResponse::from_message(message, atts)))
+    Ok(Json(enrich_message(&state, message, &auth.user_id).await?))
 }
 
 pub(super) async fn update_message(
@@ -277,15 +285,7 @@ pub(super) async fn update_message(
         .update_message(&message_id, &req.content)
         .await
         .map_err(storage_err)?;
-    let atts = state
-        .storage
-        .list_attachments_for_message(&updated.id)
-        .await
-        .map_err(internal)?
-        .into_iter()
-        .map(AttachmentResponse::from)
-        .collect();
-    let response = MessageResponse::from_message(updated, atts);
+    let response = enrich_message(&state, updated, &auth.user_id).await?;
 
     if let Some(msg) = event_json(Op::MessageUpdate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);

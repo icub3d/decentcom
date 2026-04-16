@@ -4,6 +4,7 @@ mod invites;
 mod media;
 mod membership;
 mod messages;
+mod reactions;
 mod roles;
 mod sessions;
 mod users;

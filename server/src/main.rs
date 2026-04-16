@@ -8,6 +8,7 @@ mod membership;
 mod messages;
 mod permissions;
 mod profiles;
+mod reactions;
 mod roles;
 mod server_info;
 mod storage;
@@ -53,6 +54,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", server_info::router())
         .nest("/api/v1", profiles::profile_router())
         .nest("/api/v1", attachments::router())
+        .nest("/api/v1", reactions::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .layer(cors_layer())
