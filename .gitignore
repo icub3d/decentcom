@@ -11,3 +11,4 @@ client/dist/
 *.sqlite.bak-*
 decentcom.toml
 server/media
+__pycache__/

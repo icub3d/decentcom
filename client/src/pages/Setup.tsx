@@ -6,9 +6,10 @@ interface SetupProps {
   onGenerate: () => Promise<IdentityInfo>;
   onImport: (seedPhrase: string[]) => Promise<PublicKeyInfo>;
   onComplete: () => void;
+  onCancel?: () => void;
 }
 
-export function Setup({ onGenerate, onImport, onComplete }: SetupProps) {
+export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps) {
   const [view, setView] = useState<"choice" | "generate" | "import">("choice");
   const [seedPhrase, setSeedPhrase] = useState<string[]>([]);
   const [importText, setImportText] = useState("");
@@ -85,8 +86,14 @@ export function Setup({ onGenerate, onImport, onComplete }: SetupProps) {
   return (
     <div className="max-w-md mx-auto p-8 space-y-8 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-ctp-text">Welcome</h1>
-        <p className="text-ctp-subtext0">Set up your decentcom identity to get started.</p>
+        <h1 className="text-3xl font-bold text-ctp-text">
+          {onCancel ? "Add Account" : "Welcome"}
+        </h1>
+        <p className="text-ctp-subtext0">
+          {onCancel
+            ? "Create or import another identity."
+            : "Set up your decentcom identity to get started."}
+        </p>
       </div>
       <div className="space-y-4">
         <button
@@ -102,6 +109,14 @@ export function Setup({ onGenerate, onImport, onComplete }: SetupProps) {
         >
           Import Existing
         </button>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="w-full py-3 text-ctp-subtext1 hover:text-ctp-text transition-colors text-sm"
+          >
+            Cancel
+          </button>
+        )}
       </div>
       {error && <p className="text-ctp-red text-center text-sm">{error}</p>}
     </div>

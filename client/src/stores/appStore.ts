@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 import { applyTheme, defaultTheme } from "../theme/apply";
 import type { ThemeName } from "../theme/types";
@@ -27,6 +27,16 @@ function normalizeAddress(address: string): string {
     return trimmed;
   }
   return `http://${trimmed}`;
+}
+
+/** Storage key for a given pubkey, or the default un-namespaced key. */
+function storageKeyFor(pubkey: string | null): string {
+  return pubkey ? `decentcom-app-storage-${pubkey}` : "decentcom-app-storage";
+}
+
+/** Read the active-pubkey marker from localStorage (may be null on first run). */
+function getActivePubkeyFromStorage(): string | null {
+  return localStorage.getItem("decentcom-active-pubkey") || null;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -81,7 +91,72 @@ export const useAppStore = create<AppStore>()(
       },
     }),
     {
-      name: "decentcom-app-storage",
+      name: storageKeyFor(getActivePubkeyFromStorage()),
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 );
+
+/**
+ * Called once after identity loads to ensure the persist middleware writes
+ * to the correct per-account key from the very first session.
+ */
+export function initAppStoreForAccount(pubkey: string) {
+  const current = getActivePubkeyFromStorage();
+  if (current === pubkey) return; // already namespaced
+
+  const oldKey = storageKeyFor(current);
+  const newKey = storageKeyFor(pubkey);
+
+  // Migrate any data that was saved to the old (possibly un-namespaced) key.
+  const existing = localStorage.getItem(oldKey);
+  if (existing && !localStorage.getItem(newKey)) {
+    localStorage.setItem(newKey, existing);
+  }
+
+  localStorage.setItem("decentcom-active-pubkey", pubkey);
+
+  // Point persist at the new key, then rehydrate so the store picks it up.
+  useAppStore.persist.setOptions({ name: newKey });
+  void useAppStore.persist.rehydrate();
+}
+
+/**
+ * Switch the app store to a different account's persisted state.
+ * Must be called AFTER the backend active account has been changed.
+ */
+export function switchAppStoreAccount(oldPubkey: string | null, newPubkey: string) {
+  // 1. Snapshot current state into the old account's storage key.
+  if (oldPubkey) {
+    const { currentServerId, servers, theme } = useAppStore.getState();
+    const blob = JSON.stringify({ state: { currentServerId, servers, theme }, version: 0 });
+    localStorage.setItem(storageKeyFor(oldPubkey), blob);
+  }
+
+  // 2. Update the active-pubkey marker.
+  localStorage.setItem("decentcom-active-pubkey", newPubkey);
+
+  // 3. Point the persist middleware at the new key BEFORE setting state,
+  //    so the auto-save writes to the correct location.
+  const newKey = storageKeyFor(newPubkey);
+  useAppStore.persist.setOptions({ name: newKey });
+
+  // 4. Load the new account's state (or reset to defaults).
+  const raw = localStorage.getItem(newKey);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) {
+        useAppStore.setState(parsed.state);
+        return;
+      }
+    } catch {
+      // corrupt — fall through to reset
+    }
+  }
+  useAppStore.setState({
+    currentServerId: null,
+    servers: {},
+    theme: defaultTheme(),
+  });
+}
