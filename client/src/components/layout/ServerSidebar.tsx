@@ -8,6 +8,7 @@ import { InviteList } from "../invites/InviteList";
 import { ProfileEditor } from "../profile/ProfileEditor";
 import { ThemeSwitcher } from "../settings/ThemeSwitcher";
 import { AccountSwitcher } from "../accounts/AccountSwitcher";
+import { KeyBackupPanel } from "../backup/KeyBackupPanel";
 import {
   BAN_MEMBERS,
   MANAGE_INVITES,
@@ -187,13 +188,14 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
       </div>
 
       {openPanel === "user-settings" && (
-        <div className="absolute bottom-3 left-20 z-10 w-80 pl-2">
+        <div className="absolute bottom-3 left-20 z-10 w-80 pl-2 max-h-[80vh] overflow-y-auto">
           <div className="grid gap-3">
             <AccountSwitcher
               onSwitchAccount={onSwitchAccount}
               onAddAccount={onAddAccount}
             />
             <ProfileEditor />
+            <KeyBackupPanel onImported={onSwitchAccount} />
             <ThemeSwitcher
               theme={theme}
               onThemeSelect={(next) => {
