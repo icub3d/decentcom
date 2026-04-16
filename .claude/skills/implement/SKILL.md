@@ -89,7 +89,7 @@ Implement the feature: **$ARGUMENTS**
 
 10. **Report.** Summarize what was built, any deviations from the plan, and provide the PR URL for review.
 
-11. **Cleanup.** Remove the worktree when finished:
+11. **Cleanup.** Do NOT automatically remove the worktree. Leave it for local testing unless the user explicitly instructs you to clean it up. If you need to remove it later, use:
     ```
     cd <original-project-dir>
     git worktree remove ../feature-<number>-<short-slug>

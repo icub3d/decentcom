@@ -45,7 +45,7 @@ Create a GitHub issue for the feature: **$ARGUMENTS**
 
 7. **Present the issue URL** to the user for review. Do not start implementation — that is a separate step.
 
-8. **Cleanup.** If you created a research worktree, remove it:
+8. **Cleanup.** Do NOT automatically remove the research worktree. Leave it for local testing unless the user explicitly instructs you to clean it up. If you need to remove it later, use:
    ```
    cd <original-project-dir>
    git worktree remove ../research-<feature-name>

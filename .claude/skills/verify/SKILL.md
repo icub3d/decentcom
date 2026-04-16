@@ -76,7 +76,7 @@ Verify the implementation of: **$ARGUMENTS**
    GH_PAGER= GH_PROMPT_DISABLED=1 gh pr merge <pr-number> --squash --delete-branch
    ```
 
-8. **Cleanup.** Remove the worktree when finished:
+8. **Cleanup.** Do NOT automatically remove the worktree. Leave it for local testing unless the user explicitly instructs you to clean it up. If you need to remove it later, use:
    ```
    cd <original-project-dir>
    git worktree remove ../verify-<pr-number>

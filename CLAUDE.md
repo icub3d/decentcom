@@ -87,4 +87,4 @@ When working on features or verifying pull requests, always use `git worktree` t
 
 - **Implementation:** Create a new worktree for the feature branch: `git worktree add ../feature-<number>-<slug> -b feature/<number>-<slug> main`.
 - **Verification:** Create a new worktree to review a PR: `git worktree add ../verify-<number> <branch-name>`.
-- **Cleanup:** Always remove the worktree when finished: `git worktree remove ../<dir-name>`.
+- **Cleanup:** Do NOT automatically remove the worktree. Leave it for local testing unless the user explicitly instructs you to clean it up.
