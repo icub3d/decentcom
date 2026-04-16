@@ -19,6 +19,12 @@ export interface Channel {
   type: string;
 }
 
+export interface ReactionCount {
+  emoji: string;
+  count: number;
+  me: boolean;
+}
+
 export interface Message {
   id: string;
   channel_id: string;
@@ -28,6 +34,7 @@ export interface Message {
   edited_at: string | null;
   deleted: boolean;
   attachments: Attachment[];
+  reactions?: ReactionCount[];
 }
 
 interface ChannelsResponse {
@@ -53,7 +60,13 @@ export interface GatewayEvent {
     | { user_id: string; pubkey: string; left_at: string }
     | { user_id: string; pubkey: string; kicked_by: string; kicked_at: string }
     | { pubkey: string; banned_by: string; reason?: string; banned_at: string }
-    | { user_id: string; display_name?: string | null; avatar_hash?: string | null };
+    | { user_id: string; display_name?: string | null; avatar_hash?: string | null }
+    | {
+        channel_id: string;
+        message_id: string;
+        user_id: string;
+        emoji: string;
+      };
   t: number;
 }
 
@@ -465,6 +478,55 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         case "MEMBER_UPDATE": {
           useMembersStore.getState().applyGatewayEvent(event);
           return {};
+        }
+        case "REACTION_ADD": {
+          const payload = event.d as {
+            channel_id: string;
+            message_id: string;
+            user_id: string;
+            emoji: string;
+          };
+          const existing = state.messages[payload.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [payload.channel_id]: existing.map((m) => {
+                if (m.id !== payload.message_id) return m;
+                const reactions = [...(m.reactions ?? [])];
+                const existing_reaction = reactions.find((r) => r.emoji === payload.emoji);
+                if (existing_reaction) {
+                  existing_reaction.count += 1;
+                  // Note: we don't update 'me' flag because we don't know if the current user reacted
+                  // The client should refresh or the server response will have the correct flag
+                } else {
+                  reactions.push({ emoji: payload.emoji, count: 1, me: false });
+                }
+                return { ...m, reactions };
+              }),
+            },
+          };
+        }
+        case "REACTION_REMOVE": {
+          const payload = event.d as {
+            channel_id: string;
+            message_id: string;
+            user_id: string;
+            emoji: string;
+          };
+          const existing = state.messages[payload.channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [payload.channel_id]: existing.map((m) => {
+                if (m.id !== payload.message_id) return m;
+                const reactions = (m.reactions ?? []).map((r) => {
+                  if (r.emoji !== payload.emoji) return r;
+                  return { ...r, count: Math.max(0, r.count - 1) };
+                });
+                return { ...m, reactions: reactions.filter((r) => r.count > 0) };
+              }),
+            },
+          };
         }
         default:
           return {};
