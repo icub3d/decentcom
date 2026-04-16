@@ -1,3 +1,4 @@
+mod crypto;
 mod identity;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,6 +16,10 @@ pub fn run() {
             identity::set_active_account,
             identity::delete_account,
             identity::rename_account,
+            identity::key_export,
+            identity::key_import,
+            identity::key_export_validate_passphrase,
+            identity::key_backup_read_pubkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
