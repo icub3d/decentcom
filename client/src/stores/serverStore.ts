@@ -20,6 +20,13 @@ export interface Channel {
   type: string;
 }
 
+export interface ThreadSummary {
+  thread_id: string;
+  reply_count: number;
+  last_reply_at: string | null;
+  last_reply_author_id: string | null;
+}
+
 export interface Message {
   id: string;
   channel_id: string;
@@ -30,6 +37,7 @@ export interface Message {
   deleted: boolean;
   attachments: Attachment[];
   reactions: ReactionSummary[];
+  thread: ThreadSummary | null;
 }
 
 interface ChannelsResponse {
@@ -63,7 +71,10 @@ export interface GatewayEvent {
     | { user_id: string; pubkey: string; left_at: string }
     | { user_id: string; pubkey: string; kicked_by: string; kicked_at: string }
     | { pubkey: string; banned_by: string; reason?: string; banned_at: string }
-    | { user_id: string; display_name?: string | null; avatar_hash?: string | null };
+    | { user_id: string; display_name?: string | null; avatar_hash?: string | null }
+    | { thread_id: string; channel_id: string; message_id: string; creator_id: string }
+    | { thread_id: string; reply_count: number; last_reply_at: string | null }
+    | { thread_id: string; message: Message };
   t: number;
 }
 
@@ -519,9 +530,68 @@ export const useServerStore = create<ServerStore>((set, get) => ({
             },
           };
         }
+        case "THREAD_CREATE": {
+          const { channel_id, message_id, thread_id } = event.d as {
+            channel_id: string;
+            message_id: string;
+            thread_id: string;
+          };
+          const existing = state.messages[channel_id] ?? [];
+          return {
+            messages: {
+              ...state.messages,
+              [channel_id]: existing.map((m) => {
+                if (m.id !== message_id) return m;
+                return {
+                  ...m,
+                  thread: {
+                    thread_id,
+                    reply_count: 0,
+                    last_reply_at: null,
+                    last_reply_author_id: null,
+                  },
+                };
+              }),
+            },
+          };
+        }
+        case "THREAD_UPDATE": {
+          const { thread_id, reply_count, last_reply_at } = event.d as {
+            thread_id: string;
+            reply_count: number;
+            last_reply_at: string | null;
+          };
+          // We need to find which channel and message this thread belongs to.
+          // This is inefficient but we don't have a thread_id -> message_id map in the store.
+          // Alternatively, we can just update all messages that match this thread_id.
+          const nextMessages = { ...state.messages };
+          for (const [channelId, messages] of Object.entries(nextMessages)) {
+            let changed = false;
+            const updated = messages.map((m) => {
+              if (m.thread?.thread_id === thread_id) {
+                changed = true;
+                return {
+                  ...m,
+                  thread: {
+                    ...m.thread,
+                    reply_count,
+                    last_reply_at,
+                  },
+                };
+              }
+              return m;
+            });
+            if (changed) {
+              nextMessages[channelId] = updated;
+            }
+          }
+          return { messages: nextMessages };
+        }
         default:
           return {};
       }
     });
+    // Also delegate to thread store
+    import("./threadStore").then((m) => m.useThreadStore.getState().handleGatewayEvent(event));
   },
 }));

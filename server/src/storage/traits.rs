@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use super::models::{
     AllowlistEntry, Attachment, Ban, Channel, ChannelPermissionOverride, Invite, Member,
-    MemberRole, Message, Reaction, ReactionCount, Role, Session, User,
+    MemberRole, Message, Reaction, ReactionCount, Role, Session, Thread, ThreadSummary, User,
 };
 use super::StorageError;
 
@@ -59,12 +59,20 @@ pub trait MessageStore: Send + Sync {
         channel_id: &str,
         author_id: &str,
         content: &str,
+        thread_id: Option<&str>,
     ) -> Result<Message, StorageError>;
     async fn get_message(&self, id: &str) -> Result<Option<Message>, StorageError>;
     async fn list_messages(
         &self,
         channel_id: &str,
         before: Option<&str>,
+        limit: u32,
+    ) -> Result<Vec<Message>, StorageError>;
+    async fn list_thread_messages(
+        &self,
+        thread_id: &str,
+        before: Option<&str>,
+        after: Option<&str>,
         limit: u32,
     ) -> Result<Vec<Message>, StorageError>;
     async fn update_message(&self, id: &str, content: &str) -> Result<Message, StorageError>;
@@ -260,6 +268,26 @@ pub trait ReactionStore: Send + Sync {
     ) -> Result<Vec<Reaction>, StorageError>;
 }
 
+#[async_trait]
+pub trait ThreadStore: Send + Sync {
+    async fn create_thread(
+        &self,
+        channel_id: &str,
+        parent_message_id: &str,
+        creator_id: &str,
+    ) -> Result<Thread, StorageError>;
+    async fn get_thread(&self, id: &str) -> Result<Option<Thread>, StorageError>;
+    async fn get_thread_by_parent(&self, parent_message_id: &str) -> Result<Option<Thread>, StorageError>;
+    async fn get_thread_summary(&self, parent_message_id: &str) -> Result<Option<ThreadSummary>, StorageError>;
+    async fn list_thread_summaries(&self, parent_message_ids: &[String]) -> Result<Vec<ThreadSummary>, StorageError>;
+
+    async fn add_thread_follower(&self, thread_id: &str, user_id: &str) -> Result<(), StorageError>;
+    async fn remove_thread_follower(&self, thread_id: &str, user_id: &str) -> Result<(), StorageError>;
+    async fn is_thread_follower(&self, thread_id: &str, user_id: &str) -> Result<bool, StorageError>;
+    async fn list_thread_followers(&self, thread_id: &str) -> Result<Vec<String>, StorageError>;
+    async fn update_thread_last_read(&self, thread_id: &str, user_id: &str) -> Result<(), StorageError>;
+}
+
 pub struct CreateAttachmentParams<'a> {
     pub channel_id: &'a str,
     pub uploader_id: &'a str,
@@ -282,6 +310,7 @@ pub trait Storage:
     + MediaStore
     + AttachmentStore
     + ReactionStore
+    + ThreadStore
 {
 }
 
@@ -296,5 +325,6 @@ impl<T> Storage for T where
         + MediaStore
         + AttachmentStore
         + ReactionStore
+        + ThreadStore
 {
 }

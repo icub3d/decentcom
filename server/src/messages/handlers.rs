@@ -8,7 +8,7 @@ use crate::attachments::models::AttachmentResponse;
 use crate::gateway::events::event_json;
 use crate::messages::models::{
     CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, ReactionSummary,
-    UpdateMessageRequest,
+    UpdateMessageRequest, ThreadSummaryResponse,
 };
 use crate::permissions::{
     effective_permissions, has_permission, UserPermissions, MANAGE_MESSAGES, READ_MESSAGES,
@@ -108,7 +108,13 @@ async fn enrich_message(
         .into_iter()
         .map(ReactionSummary::from)
         .collect();
-    Ok(MessageResponse::from_message(message, atts, reactions))
+    let thread = state
+        .storage
+        .get_thread_summary(&message.id)
+        .await
+        .map_err(internal)?
+        .map(ThreadSummaryResponse::from);
+    Ok(MessageResponse::from_message(message, atts, reactions, thread))
 }
 
 async fn ensure_channel_exists(
@@ -156,7 +162,7 @@ pub(super) async fn create_message(
 
     let message = state
         .storage
-        .create_message(&channel_id, &auth.user_id, content)
+        .create_message(&channel_id, &auth.user_id, content, None)
         .await
         .map_err(storage_err)?;
 
@@ -173,7 +179,7 @@ pub(super) async fn create_message(
         Vec::new()
     };
 
-    let response = MessageResponse::from_message(message, attachments, Vec::new());
+    let response = MessageResponse::from_message(message, attachments, Vec::new(), None);
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);

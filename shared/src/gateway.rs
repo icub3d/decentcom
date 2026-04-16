@@ -25,6 +25,9 @@ pub enum Op {
     MemberUpdate,
     ReactionAdd,
     ReactionRemove,
+    ThreadCreate,
+    ThreadMessageCreate,
+    ThreadUpdate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +72,21 @@ pub struct ReactionEventData {
     pub message_id: String,
     pub user_id: String,
     pub emoji: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadEventData {
+    pub thread_id: String,
+    pub channel_id: String,
+    pub parent_message_id: String,
+    pub creator_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadUpdateData {
+    pub thread_id: String,
+    pub reply_count: i64,
+    pub last_reply_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
