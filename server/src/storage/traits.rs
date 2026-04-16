@@ -233,6 +233,12 @@ pub trait ReactionStore: Send + Sync {
         emoji: &str,
     ) -> Result<Option<Reaction>, StorageError>;
 
+    async fn get_user_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+    ) -> Result<Option<Reaction>, StorageError>;
+
     async fn remove_reaction(&self, message_id: &str, user_id: &str) -> Result<(), StorageError>;
 
     /// Aggregate counts per emoji, with a `me` flag for `viewer_id`.

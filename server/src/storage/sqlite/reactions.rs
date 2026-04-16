@@ -61,6 +61,21 @@ impl ReactionStore for SqliteStorage {
         Ok(Some(row_to_reaction(row)?))
     }
 
+    async fn get_user_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+    ) -> Result<Option<Reaction>, StorageError> {
+        let row = sqlx::query(
+            "SELECT message_id, user_id, emoji, created_at FROM reactions WHERE message_id = ? AND user_id = ?",
+        )
+        .bind(message_id)
+        .bind(user_id)
+        .fetch_optional(self.pool())
+        .await?;
+        row.map(row_to_reaction).transpose()
+    }
+
     async fn remove_reaction(&self, message_id: &str, user_id: &str) -> Result<(), StorageError> {
         sqlx::query("DELETE FROM reactions WHERE message_id = ? AND user_id = ?")
             .bind(message_id)
