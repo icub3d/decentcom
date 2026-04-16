@@ -77,7 +77,7 @@ export function KeySafety({ identity, onComplete }: KeySafetyProps) {
             </div>
             <button
               onClick={() => void handleCopy()}
-              className="w-full py-1.5 text-sm rounded bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text transition cursor-pointer"
+              className="w-full py-1.5 text-sm rounded bg-ctp-yellow hover:bg-ctp-yellow/80 text-ctp-crust font-medium transition cursor-pointer"
             >
               {copied ? "✓ Copied!" : "Copy to Clipboard"}
             </button>
