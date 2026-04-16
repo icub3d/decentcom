@@ -8,7 +8,6 @@ import { InviteList } from "../invites/InviteList";
 import { ProfileEditor } from "../profile/ProfileEditor";
 import { ThemeSwitcher } from "../settings/ThemeSwitcher";
 import { AccountSwitcher } from "../accounts/AccountSwitcher";
-import { KeyBackupPanel } from "../backup/KeyBackupPanel";
 import {
   BAN_MEMBERS,
   MANAGE_INVITES,
@@ -196,7 +195,6 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
               onSwitchAccount={onSwitchAccount}
             />
             <ProfileEditor />
-            <KeyBackupPanel onImported={onSwitchAccount} />
             <ThemeSwitcher
               theme={theme}
               onThemeSelect={(next) => {
