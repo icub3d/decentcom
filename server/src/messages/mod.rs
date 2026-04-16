@@ -1,7 +1,7 @@
 mod handlers;
 pub mod models;
 
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 
 use crate::AppState;
@@ -17,6 +17,16 @@ pub fn router() -> Router<AppState> {
             get(handlers::get_message)
                 .patch(handlers::update_message)
                 .delete(handlers::delete_message),
+        )
+        .route(
+            "/channels/:channel_id/messages/:message_id/reactions/:emoji",
+            put(crate::reactions::add_reaction)
+                .delete(crate::reactions::remove_own_reaction)
+                .get(crate::reactions::get_reaction_users),
+        )
+        .route(
+            "/channels/:channel_id/messages/:message_id/reactions/:emoji/:user_id",
+            delete(crate::reactions::remove_user_reaction),
         )
 }
 

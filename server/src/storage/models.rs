@@ -117,3 +117,11 @@ pub struct Attachment {
     pub created_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Reaction {
+    pub message_id: String,
+    pub user_id: String,
+    pub emoji: String,
+    pub created_at: DateTime<Utc>,
+}

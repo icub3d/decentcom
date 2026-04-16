@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use super::models::{
     AllowlistEntry, Attachment, Ban, Channel, ChannelPermissionOverride, Invite, Member,
-    MemberRole, Message, Role, Session, User,
+    MemberRole, Message, Reaction, Role, Session, User,
 };
 use super::StorageError;
 
@@ -222,6 +222,42 @@ pub trait AttachmentStore: Send + Sync {
     ) -> Result<Vec<Attachment>, StorageError>;
 }
 
+#[async_trait]
+pub trait ReactionStore: Send + Sync {
+    async fn add_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+        emoji: &str,
+    ) -> Result<Reaction, StorageError>;
+    async fn remove_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+        emoji: &str,
+    ) -> Result<(), StorageError>;
+    async fn remove_user_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+        emoji: &str,
+    ) -> Result<(), StorageError>;
+    async fn list_reactions_for_message(
+        &self,
+        message_id: &str,
+    ) -> Result<Vec<Reaction>, StorageError>;
+    async fn count_reactions_for_message(
+        &self,
+        message_id: &str,
+        current_user_id: &str,
+    ) -> Result<Vec<(String, i64, bool)>, StorageError>;
+    async fn list_users_for_reaction(
+        &self,
+        message_id: &str,
+        emoji: &str,
+    ) -> Result<Vec<User>, StorageError>;
+}
+
 pub struct CreateAttachmentParams<'a> {
     pub channel_id: &'a str,
     pub uploader_id: &'a str,
@@ -243,6 +279,7 @@ pub trait Storage:
     + MemberStore
     + MediaStore
     + AttachmentStore
+    + ReactionStore
 {
 }
 
@@ -256,5 +293,6 @@ impl<T> Storage for T where
         + MemberStore
         + MediaStore
         + AttachmentStore
+        + ReactionStore
 {
 }

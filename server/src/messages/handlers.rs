@@ -2,7 +2,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use serde::Serialize;
-use shared::gateway::Op;
+use shared::gateway::{Op, ReactionCount};
 
 use crate::attachments::models::AttachmentResponse;
 use crate::gateway::events::event_json;
@@ -102,6 +102,23 @@ async fn ensure_channel_exists(
     Ok(())
 }
 
+async fn enrich_message_with_reactions(
+    state: &AppState,
+    message: crate::storage::models::Message,
+    current_user_id: &str,
+) -> Result<Vec<ReactionCount>, (StatusCode, Json<ErrorBody>)> {
+    let reaction_counts = state
+        .storage
+        .count_reactions_for_message(&message.id, current_user_id)
+        .await
+        .map_err(internal)?;
+
+    Ok(reaction_counts
+        .into_iter()
+        .map(|(emoji, count, me)| ReactionCount { emoji, count, me })
+        .collect())
+}
+
 pub(super) async fn create_message(
     State(state): State<AppState>,
     auth: UserPermissions,
@@ -148,7 +165,8 @@ pub(super) async fn create_message(
         Vec::new()
     };
 
-    let response = MessageResponse::from_message(message, attachments);
+    let reactions = enrich_message_with_reactions(&state, message.clone(), &auth.user_id).await?;
+    let response = MessageResponse::from_message(message, attachments, reactions);
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);
@@ -199,7 +217,8 @@ pub(super) async fn list_messages(
             .into_iter()
             .map(AttachmentResponse::from)
             .collect();
-        messages.push(MessageResponse::from_message(item, atts));
+        let reactions = enrich_message_with_reactions(&state, item.clone(), &auth.user_id).await?;
+        messages.push(MessageResponse::from_message(item, atts, reactions));
     }
     Ok(Json(MessagePage { messages, has_more }))
 }
@@ -237,7 +256,8 @@ pub(super) async fn get_message(
         .map(AttachmentResponse::from)
         .collect();
 
-    Ok(Json(MessageResponse::from_message(message, atts)))
+    let reactions = enrich_message_with_reactions(&state, message.clone(), &auth.user_id).await?;
+    Ok(Json(MessageResponse::from_message(message, atts, reactions)))
 }
 
 pub(super) async fn update_message(
@@ -285,7 +305,8 @@ pub(super) async fn update_message(
         .into_iter()
         .map(AttachmentResponse::from)
         .collect();
-    let response = MessageResponse::from_message(updated, atts);
+    let reactions = enrich_message_with_reactions(&state, updated.clone(), &auth.user_id).await?;
+    let response = MessageResponse::from_message(updated, atts, reactions);
 
     if let Some(msg) = event_json(Op::MessageUpdate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);

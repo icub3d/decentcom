@@ -8,6 +8,7 @@ mod membership;
 mod messages;
 mod permissions;
 mod profiles;
+mod reactions;
 mod roles;
 mod server_info;
 mod storage;

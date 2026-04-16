@@ -23,6 +23,8 @@ pub enum Op {
     MemberKick,
     MemberBan,
     MemberUpdate,
+    ReactionAdd,
+    ReactionRemove,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,6 +110,29 @@ impl<'de> Deserialize<'de> for ClientCommand {
             _ => Ok(ClientCommand::Unknown),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReactionAddData {
+    pub channel_id: String,
+    pub message_id: String,
+    pub user_id: String,
+    pub emoji: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReactionRemoveData {
+    pub channel_id: String,
+    pub message_id: String,
+    pub user_id: String,
+    pub emoji: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReactionCount {
+    pub emoji: String,
+    pub count: i64,
+    pub me: bool,
 }
 
 #[cfg(test)]
