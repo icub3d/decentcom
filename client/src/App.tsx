@@ -8,7 +8,7 @@ import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
 import { authenticateServer } from "./services/auth";
 import { getServerInfo } from "./api/server";
-import { useAppStore, switchAppStoreAccount } from "./stores/appStore";
+import { useAppStore, switchAppStoreAccount, initAppStoreForAccount } from "./stores/appStore";
 import { useIdentityStore } from "./stores/identityStore";
 import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
@@ -18,6 +18,7 @@ import "./App.css";
 function App() {
   const {
     hasIdentity,
+    publicKey,
     loading,
     error,
     generateIdentity,
@@ -38,6 +39,14 @@ function App() {
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  // Once identity is resolved, make sure the app store is namespaced
+  // to the active account so persist reads/writes go to the right key.
+  useEffect(() => {
+    if (hasIdentity && publicKey && !loading) {
+      initAppStoreForAccount(publicKey);
+    }
+  }, [hasIdentity, publicKey, loading]);
 
   // Clear connection errors once the gateway is connected
   useEffect(() => {
@@ -94,8 +103,9 @@ function App() {
   async function handleSwitchAccount(pubkey: string) {
     // Disconnect current session, switch backend active key, reload store.
     disconnect();
+    const oldPubkey = activeAccount;
     await setActiveAccount(pubkey);
-    switchAppStoreAccount(pubkey);
+    switchAppStoreAccount(oldPubkey, pubkey);
     await refresh();
   }
 
@@ -106,9 +116,11 @@ function App() {
   async function handleAddAccountComplete() {
     setAddingAccount(false);
     await refresh();
-    // The newly generated/imported account is now active.
-    if (activeAccount) {
-      switchAppStoreAccount(activeAccount);
+    // The newly generated/imported account is now the active one in the backend.
+    // Re-read from identityStore to get the updated pubkey.
+    const newActive = useIdentityStore.getState().activeAccount;
+    if (newActive) {
+      switchAppStoreAccount(activeAccount, newActive);
     }
   }
 

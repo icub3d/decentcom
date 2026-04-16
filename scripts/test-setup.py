@@ -107,6 +107,16 @@ def clean_databases():
             print(f"  Removed {p.relative_to(ROOT)}/")
         p.mkdir(exist_ok=True)
 
+def clean_webview_data():
+    """Remove the Tauri WebView data directory (localStorage, cache, etc.)."""
+    import shutil
+    data_dir = Path.home() / ".local" / "share" / "com.jmarsh.client"
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+        print(f"  Removed Tauri WebView data ({data_dir})")
+    else:
+        print(f"  No WebView data to clean")
+
 def clean_keychain():
     """Remove all decentcom test entries from the OS keychain."""
     # First read the accounts index to find per-account seeds.
@@ -352,6 +362,7 @@ def main():
     print("Cleaning test environment...")
     clean_databases()
     clean_keychain()
+    clean_webview_data()
 
     if clean_only:
         print("\nDone (clean only).")
