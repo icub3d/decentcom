@@ -144,6 +144,67 @@ def clean_keychain():
         )
     print("  Cleared keychain entries")
 
+def seed_localstorage():
+    """Pre-populate the Tauri WebView localStorage with server connections for each account.
+
+    WebKit stores localStorage as a SQLite database with keys and values encoded as
+    UTF-16LE bytes. The file is named after the origin: http_localhost_1420 for dev
+    (Vite's default port).
+    """
+    ls_dir = Path.home() / ".local" / "share" / "com.jmarsh.client" / "localstorage"
+    ls_dir.mkdir(parents=True, exist_ok=True)
+    ls_db = ls_dir / "http_localhost_1420.localstorage"
+
+    conn = sqlite3.connect(str(ls_db))
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS ItemTable "
+        "(key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB NOT NULL ON CONFLICT FAIL)"
+    )
+
+    def enc(s: str) -> bytes:
+        """Encode a value as UTF-16LE blob (matching WebKitGTK localStorage format).
+        Keys are stored as plain text strings; values as UTF-16LE blobs."""
+        return s.encode("utf-16-le")
+
+    OPEN    = {"id": "http://localhost:8081", "address": "http://localhost:8081", "name": "Open Server"}
+    PRIVATE = {"id": "http://localhost:8082", "address": "http://localhost:8082", "name": "Private Server"}
+    STRICT  = {"id": "http://localhost:8083", "address": "http://localhost:8083", "name": "Strict Server"}
+
+    # Map each account to the servers they belong to (matches DB seed above).
+    account_servers = {
+        "alice":   [OPEN, PRIVATE, STRICT],
+        "bob":     [OPEN, PRIVATE, STRICT],
+        "charlie": [OPEN],
+        "dave":    [OPEN],
+    }
+
+    for name, servers in account_servers.items():
+        pk = USERS[name]["pubkey"]
+        state = json.dumps({
+            "state": {
+                "currentServerId": OPEN["id"],
+                "servers": {s["id"]: s for s in servers},
+                "theme": "mocha",
+            },
+            "version": 0,
+        })
+        key = f"decentcom-app-storage-{pk}"
+        conn.execute(
+            "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
+            (key, enc(state)),
+        )
+
+    # Set alice as the default active account.
+    conn.execute(
+        "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
+        ("decentcom-active-pubkey", enc(USERS["alice"]["pubkey"])),
+    )
+
+    conn.commit()
+    conn.close()
+    print(f"  Seeded localStorage for {len(account_servers)} accounts (active: alice)")
+
+
 def store_test_accounts_in_keychain():
     """Store the test user seeds in the OS keychain so the client can use them."""
     pubkeys = [u["pubkey"] for u in USERS.values()]
@@ -354,6 +415,11 @@ def print_summary():
     print()
     print("To start servers: make dev")
     print("  or: overmind start -f Procfile (just servers)")
+    print()
+    print("Client localStorage pre-configured:")
+    print("  alice & bob — Open + Private + Strict servers added")
+    print("  charlie & dave — Open server added")
+    print("  Active account: alice (switch via account switcher in client)")
     print("=" * 60)
 
 def main():
@@ -382,6 +448,9 @@ def main():
 
     print("\nStoring test accounts in OS keychain...")
     store_test_accounts_in_keychain()
+
+    print("\nSeeding WebView localStorage...")
+    seed_localstorage()
 
     print_summary()
 
