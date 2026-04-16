@@ -26,6 +26,6 @@ bip39 = { version = "2", features = ["rand"] }
 rand = "0.8"
 bs58 = "0.5"
 base64 = "0.22"
-keyring = { version = "3" }
+keyring = { version = "3", features = ["sync-secret-service"] }
 zeroize = { version = "1", features = ["derive"] }
 tokio = { workspace = true }
