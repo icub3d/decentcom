@@ -98,7 +98,7 @@ function sortChannels(channels: Channel[]): Channel[] {
   return [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
 }
 
-/** Merge two message arrays, deduplicate by ID, and sort newest-first (ULID order). */
+/** Merge two message arrays, deduplicate by ID, and sort newest-first by creation time. */
 function mergeMessages(existing: Message[], incoming: Message[]): Message[] {
   const seen = new Set<string>();
   const merged = [...existing, ...incoming].filter((m) => {
@@ -106,7 +106,10 @@ function mergeMessages(existing: Message[], incoming: Message[]): Message[] {
     seen.add(m.id);
     return true;
   });
-  merged.sort((a, b) => (a.id < b.id ? 1 : -1));
+  merged.sort((a, b) => {
+    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1;
+    return a.id < b.id ? 1 : -1;
+  });
   return merged;
 }
 
