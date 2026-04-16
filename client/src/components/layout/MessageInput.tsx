@@ -34,6 +34,7 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
   const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
   const address = useServerStore((s) => s.address);
   const sessionToken = useServerStore((s) => s.sessionToken);
@@ -227,6 +228,7 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {!disabled && (
             <button
+              ref={emojiButtonRef}
               onClick={() => setEmojiOpen((v) => !v)}
               disabled={disabled || sending}
               aria-label="Emoji picker"
@@ -236,12 +238,11 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
             </button>
           )}
           {emojiOpen && (
-            <div className="absolute bottom-full right-0 mb-2">
-              <EmojiPicker
-                onSelect={insertAtCursor}
-                onClose={() => setEmojiOpen(false)}
-              />
-            </div>
+            <EmojiPicker
+              anchorRef={emojiButtonRef}
+              onSelect={insertAtCursor}
+              onClose={() => setEmojiOpen(false)}
+            />
           )}
           <button
             onClick={submit}

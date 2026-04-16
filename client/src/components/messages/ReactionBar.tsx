@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ReactionSummary } from "../../api/reactions";
 import { putReaction } from "../../api/reactions";
@@ -13,6 +13,7 @@ interface ReactionBarProps {
 
 export function ReactionBar({ channelId, messageId, reactions }: ReactionBarProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const address = useServerStore((s) => s.address);
   const token = useServerStore((s) => s.sessionToken);
 
@@ -48,8 +49,9 @@ export function ReactionBar({ channelId, messageId, reactions }: ReactionBarProp
         </button>
       ))}
 
-      <div className="relative">
+      <div>
         <button
+          ref={triggerRef}
           onClick={() => setPickerOpen((v) => !v)}
           aria-label="Add reaction"
           className="flex items-center gap-1 rounded-full border border-ctp-overlay0 px-2 py-0.5 text-sm text-ctp-subtext0 transition hover:border-ctp-blue hover:bg-ctp-surface1 hover:text-ctp-text"
@@ -59,6 +61,7 @@ export function ReactionBar({ channelId, messageId, reactions }: ReactionBarProp
         </button>
         {pickerOpen && (
           <EmojiPicker
+            anchorRef={triggerRef}
             onSelect={(emoji) => void handlePickerSelect(emoji)}
             onClose={() => setPickerOpen(false)}
           />
