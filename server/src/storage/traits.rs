@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use super::models::{
     AllowlistEntry, Attachment, Ban, Channel, ChannelPermissionOverride, Invite, Member,
-    MemberRole, Message, Role, Session, User,
+    MemberRole, Message, Reaction, ReactionCount, Role, Session, User,
 };
 use super::StorageError;
 
@@ -222,6 +222,36 @@ pub trait AttachmentStore: Send + Sync {
     ) -> Result<Vec<Attachment>, StorageError>;
 }
 
+#[async_trait]
+pub trait ReactionStore: Send + Sync {
+    /// Add or replace the current user's reaction. Returns (reaction, replaced_emoji).
+    /// If the user already had the same emoji, removes it (toggle) and returns None.
+    async fn upsert_reaction(
+        &self,
+        message_id: &str,
+        user_id: &str,
+        emoji: &str,
+    ) -> Result<Option<Reaction>, StorageError>;
+
+    async fn remove_reaction(&self, message_id: &str, user_id: &str) -> Result<(), StorageError>;
+
+    /// Aggregate counts per emoji, with a `me` flag for `viewer_id`.
+    async fn list_reaction_counts(
+        &self,
+        message_id: &str,
+        viewer_id: &str,
+    ) -> Result<Vec<ReactionCount>, StorageError>;
+
+    /// List users who reacted with a specific emoji (paginated).
+    async fn list_emoji_reactors(
+        &self,
+        message_id: &str,
+        emoji: &str,
+        limit: u32,
+        before: Option<&str>,
+    ) -> Result<Vec<Reaction>, StorageError>;
+}
+
 pub struct CreateAttachmentParams<'a> {
     pub channel_id: &'a str,
     pub uploader_id: &'a str,
@@ -243,6 +273,7 @@ pub trait Storage:
     + MemberStore
     + MediaStore
     + AttachmentStore
+    + ReactionStore
 {
 }
 
@@ -256,5 +287,6 @@ impl<T> Storage for T where
         + MemberStore
         + MediaStore
         + AttachmentStore
+        + ReactionStore
 {
 }
