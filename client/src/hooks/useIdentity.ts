@@ -50,9 +50,8 @@ export function useIdentity() {
       setLoading(true);
       setError(null);
       const info = await invoke<IdentityInfo>("generate_identity");
-      setHasIdentity(true);
-      setPublicKey(info.pubkey);
-      await identityRefresh();
+      // Don't set hasIdentity here — let the caller's onComplete flow
+      // trigger refresh() so the safety screen stays mounted.
       return info;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
