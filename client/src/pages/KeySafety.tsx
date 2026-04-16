@@ -64,7 +64,7 @@ export function KeySafety({ identity, onComplete }: KeySafetyProps) {
           <>
             <div
               data-testid="seed-phrase-grid"
-              className="grid grid-cols-3 gap-2 p-3 bg-ctp-mantle rounded-lg border border-ctp-overlay0 select-all font-mono text-sm"
+              className="grid grid-cols-3 gap-2 p-3 bg-ctp-mantle rounded-lg border border-ctp-overlay0 font-mono text-sm"
             >
               {identity.seed_phrase.map((word, i) => (
                 <div key={i} className="flex gap-2">
