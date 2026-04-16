@@ -39,3 +39,39 @@ export async function deleteAccount(pubkey: string): Promise<void> {
 export async function renameAccount(pubkey: string, label: string): Promise<void> {
   await invoke("rename_account", { pubkey, label });
 }
+
+// Key backup / recovery
+
+export interface PassphraseValidation {
+  strength: "tooshort" | "weak" | "fair" | "strong";
+  entropy_bits: number;
+  feedback: string;
+}
+
+export async function keyExportValidatePassphrase(
+  pass: string,
+): Promise<PassphraseValidation> {
+  return invoke<PassphraseValidation>("key_export_validate_passphrase", {
+    pass,
+  });
+}
+
+export async function keyExport(
+  passphrase: string,
+  path: string,
+): Promise<void> {
+  await invoke("key_export", { passphrase, path });
+}
+
+export async function keyImport(
+  passphrase: string,
+  path: string,
+): Promise<{ pubkey: string }> {
+  return invoke<{ pubkey: string }>("key_import", { passphrase, path });
+}
+
+export async function keyBackupReadPubkey(
+  path: string,
+): Promise<{ pubkey: string }> {
+  return invoke<{ pubkey: string }>("key_backup_read_pubkey", { path });
+}

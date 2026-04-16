@@ -308,6 +308,107 @@ fn get_signing_key_for(pubkey: &str) -> Result<SigningKey, IdentityError> {
     Ok(SigningKey::from_bytes(&seed_array))
 }
 
+/// Load the raw 32-byte seed for a given pubkey from the keychain.
+fn get_seed_for(pubkey: &str) -> Result<Zeroizing<[u8; 32]>, IdentityError> {
+    let entry = Entry::new(SERVICE_NAME, &seed_entry_name(pubkey))?;
+    let hex_seed = Zeroizing::new(entry.get_password()?);
+    let seed_bytes: Zeroizing<Vec<u8>> = Zeroizing::new(
+        hex::decode(hex_seed.as_str())
+            .map_err(|_| IdentityError::Crypto("Invalid hex in keychain".into()))?,
+    );
+    let seed_array: Zeroizing<[u8; 32]> = Zeroizing::new(
+        seed_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| IdentityError::Crypto("Invalid seed length".into()))?,
+    );
+    Ok(seed_array)
+}
+
+/// Store a raw 32-byte seed in the keychain, add to accounts index, and set
+/// as active. Returns the base58-encoded public key.
+fn store_seed(seed: &[u8; 32]) -> Result<String, IdentityError> {
+    let signing_key = SigningKey::from_bytes(seed);
+    let pubkey = bs58::encode(signing_key.verifying_key().as_bytes()).into_string();
+
+    let hex_seed = Zeroizing::new(hex::encode(seed));
+    let entry = Entry::new(SERVICE_NAME, &seed_entry_name(&pubkey))?;
+    entry.set_password(&hex_seed)?;
+
+    let mut accounts = load_accounts_index()?;
+    if !accounts.contains(&pubkey) {
+        accounts.push(pubkey.clone());
+        save_accounts_index(&accounts)?;
+    }
+
+    let mut lock = ACTIVE_ACCOUNT.lock().unwrap();
+    *lock = Some(pubkey.clone());
+
+    Ok(pubkey)
+}
+
+// ---------------------------------------------------------------------------
+// Key recovery commands
+// ---------------------------------------------------------------------------
+
+use crate::crypto::backup;
+use crate::crypto::passphrase;
+
+#[derive(Serialize, Deserialize)]
+pub struct BackupPubkeyInfo {
+    pub pubkey: String,
+}
+
+#[tauri::command]
+pub fn key_export(passphrase: String, path: String) -> Result<(), String> {
+    inner_key_export(&passphrase, &path).map_err(|e| e.to_string())
+}
+
+fn inner_key_export(pass: &str, path: &str) -> Result<(), IdentityError> {
+    let pubkey = get_active_pubkey()?;
+    let seed = get_seed_for(&pubkey)?;
+    let data = backup::encrypt_key(&seed, pass)
+        .map_err(|e| IdentityError::Crypto(e.to_string()))?;
+    std::fs::write(path, data)
+        .map_err(|e| IdentityError::Crypto(format!("Failed to write backup file: {e}")))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn key_import(passphrase: String, path: String) -> Result<PublicKeyInfo, String> {
+    inner_key_import(&passphrase, &path).map_err(|e| e.to_string())
+}
+
+fn inner_key_import(pass: &str, path: &str) -> Result<PublicKeyInfo, IdentityError> {
+    let data = std::fs::read(path)
+        .map_err(|e| IdentityError::Crypto(format!("Failed to read backup file: {e}")))?;
+    let seed = backup::decrypt_key(&data, pass)
+        .map_err(|e| IdentityError::Crypto(e.to_string()))?;
+    let pubkey = store_seed(&seed)?;
+    Ok(PublicKeyInfo { pubkey })
+}
+
+#[tauri::command]
+pub fn key_export_validate_passphrase(
+    pass: String,
+) -> Result<passphrase::PassphraseValidation, String> {
+    Ok(passphrase::validate_passphrase(&pass))
+}
+
+#[tauri::command]
+pub fn key_backup_read_pubkey(path: String) -> Result<BackupPubkeyInfo, String> {
+    inner_key_backup_read_pubkey(&path).map_err(|e| e.to_string())
+}
+
+fn inner_key_backup_read_pubkey(path: &str) -> Result<BackupPubkeyInfo, IdentityError> {
+    let data = std::fs::read(path)
+        .map_err(|e| IdentityError::Crypto(format!("Failed to read backup file: {e}")))?;
+    let pubkey_bytes = backup::read_backup_pubkey(&data)
+        .map_err(|e| IdentityError::Crypto(e.to_string()))?;
+    let pubkey = bs58::encode(&pubkey_bytes).into_string();
+    Ok(BackupPubkeyInfo { pubkey })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

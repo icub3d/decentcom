@@ -29,3 +29,6 @@ base64 = "0.22"
 keyring = { version = "3", features = ["sync-secret-service"] }
 zeroize = { version = "1", features = ["derive"] }
 tokio = { workspace = true }
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+tauri-plugin-dialog = "2.7.0"

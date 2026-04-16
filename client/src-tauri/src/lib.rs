@@ -1,9 +1,11 @@
+mod crypto;
 mod identity;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             identity::has_identity,
@@ -15,6 +17,10 @@ pub fn run() {
             identity::set_active_account,
             identity::delete_account,
             identity::rename_account,
+            identity::key_export,
+            identity::key_import,
+            identity::key_export_validate_passphrase,
+            identity::key_backup_read_pubkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
