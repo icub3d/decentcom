@@ -49,7 +49,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   return (
     <div
       ref={pickerRef}
-      className="absolute bottom-full right-0 mb-2 w-72 rounded-lg border border-ctp-surface1 bg-ctp-surface0 shadow-lg"
+      className="absolute bottom-full right-0 z-50 mb-2 w-72 rounded-lg border border-ctp-surface1 bg-ctp-surface0 shadow-lg"
       role="dialog"
       aria-label="Emoji picker"
     >
