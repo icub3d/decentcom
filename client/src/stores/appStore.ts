@@ -126,6 +126,9 @@ export function initAppStoreForAccount(pubkey: string) {
  * Must be called AFTER the backend active account has been changed.
  */
 export function switchAppStoreAccount(oldPubkey: string | null, newPubkey: string) {
+  // Guard: nothing to do if we're already on the target account.
+  if (oldPubkey === newPubkey) return;
+
   // 1. Snapshot current state into the old account's storage key.
   if (oldPubkey) {
     const { currentServerId, servers, theme } = useAppStore.getState();

@@ -70,9 +70,13 @@ fn load_accounts_index() -> Result<Vec<String>, IdentityError> {
         Ok(json) => {
             let accounts: Vec<String> =
                 serde_json::from_str(&json).unwrap_or_default();
+            eprintln!("[identity] load_accounts_index: {} accounts", accounts.len());
             Ok(accounts)
         }
-        Err(keyring::Error::NoEntry) => Ok(Vec::new()),
+        Err(keyring::Error::NoEntry) => {
+            eprintln!("[identity] load_accounts_index: no entry (empty)");
+            Ok(Vec::new())
+        }
         Err(e) => Err(IdentityError::Keyring(e.to_string())),
     }
 }
@@ -81,6 +85,7 @@ fn save_accounts_index(accounts: &[String]) -> Result<(), IdentityError> {
     let entry = Entry::new(SERVICE_NAME, ACCOUNTS_INDEX)?;
     let json = serde_json::to_string(accounts)
         .map_err(|e| IdentityError::Crypto(e.to_string()))?;
+    eprintln!("[identity] save_accounts_index: saving {} accounts", accounts.len());
     entry.set_password(&json)?;
     Ok(())
 }
@@ -123,6 +128,7 @@ fn load_account_label(pubkey: &str) -> Option<String> {
 fn inner_list_accounts() -> Result<Vec<AccountInfo>, IdentityError> {
     let accounts = load_accounts_index()?;
     let active = get_active_pubkey().ok();
+    eprintln!("[identity] list_accounts: {} accounts, active={:?}", accounts.len(), active.as_deref().map(|s| &s[..8.min(s.len())]));
     Ok(accounts
         .into_iter()
         .map(|pk| {
@@ -247,6 +253,8 @@ fn derive_and_store(mnemonic: &Mnemonic) -> Result<(String, SigningKey), Identit
     let signing_key = SigningKey::from_bytes(&seed_bytes);
     let pubkey = bs58::encode(signing_key.verifying_key().as_bytes()).into_string();
 
+    eprintln!("[identity] derive_and_store: pubkey={}", &pubkey[..8.min(pubkey.len())]);
+
     // Store seed under per-account keyring entry.
     let hex_seed = Zeroizing::new(hex::encode(seed_bytes.as_slice()));
     let entry = Entry::new(SERVICE_NAME, &seed_entry_name(&pubkey))?;
@@ -330,6 +338,8 @@ fn get_seed_for(pubkey: &str) -> Result<Zeroizing<[u8; 32]>, IdentityError> {
 fn store_seed(seed: &[u8; 32]) -> Result<String, IdentityError> {
     let signing_key = SigningKey::from_bytes(seed);
     let pubkey = bs58::encode(signing_key.verifying_key().as_bytes()).into_string();
+
+    eprintln!("[identity] store_seed: pubkey={}", &pubkey[..8.min(pubkey.len())]);
 
     let hex_seed = Zeroizing::new(hex::encode(seed));
     let entry = Entry::new(SERVICE_NAME, &seed_entry_name(&pubkey))?;
