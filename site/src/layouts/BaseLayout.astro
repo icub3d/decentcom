@@ -20,6 +20,9 @@ const base = import.meta.env.BASE_URL;
 		<title>{title} | decentcom</title>
 		<meta name="description" content={description} />
 		
+		<!-- Preload critical assets -->
+		<link rel="preload" href={`${base}/favicon.svg`} as="image" type="image/svg+xml" />
+
 		<!-- Open Graph / Facebook -->
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content={Astro.url} />
@@ -31,6 +34,17 @@ const base = import.meta.env.BASE_URL;
 		<meta property="twitter:url" content={Astro.url} />
 		<meta property="twitter:title" content={`${title} | decentcom`} />
 		<meta property="twitter:description" content={description} />
+
+		<style is:global>
+			/* Improve font loading */
+			@font-face {
+				font-family: 'system-ui';
+				font-style: normal;
+				font-weight: 400;
+				font-display: swap;
+				src: local('.SFNSText-Regular'), local('.HelveticaNeueDeskInterface-Regular'), local('.LucidaGrandeInterface'), local('Segoe UI'), local('Ubuntu'), local('Roboto-Regular'), local('DroidSans'), local('Tahoma');
+			}
+		</style>
 	</head>
 	<body class="min-h-screen flex flex-col bg-ctp-base text-ctp-text selection:bg-ctp-mauve/30 selection:text-ctp-text">
 		<header class="sticky top-0 z-50 w-full border-b border-ctp-surface1 bg-ctp-base/80 backdrop-blur">
@@ -99,19 +113,21 @@ const base = import.meta.env.BASE_URL;
 			</div>
 		</footer>
 
-		<script>
-			const button = document.getElementById('mobile-menu-button');
-			const menu = document.getElementById('mobile-menu');
-			const menuIcon = document.getElementById('menu-icon');
-			const closeIcon = document.getElementById('close-icon');
+		<script is:inline>
+			(function() {
+				const button = document.getElementById('mobile-menu-button');
+				const menu = document.getElementById('mobile-menu');
+				const menuIcon = document.getElementById('menu-icon');
+				const closeIcon = document.getElementById('close-icon');
 
-			button?.addEventListener('click', () => {
-				const isExpanded = button.getAttribute('aria-expanded') === 'true';
-				button.setAttribute('aria-expanded', (!isExpanded).toString());
-				menu?.classList.toggle('hidden');
-				menuIcon?.classList.toggle('hidden');
-				closeIcon?.classList.toggle('hidden');
-			});
+				button?.addEventListener('click', () => {
+					const isExpanded = button.getAttribute('aria-expanded') === 'true';
+					button.setAttribute('aria-expanded', (!isExpanded).toString());
+					menu?.classList.toggle('hidden');
+					menuIcon?.classList.toggle('hidden');
+					closeIcon?.classList.toggle('hidden');
+				});
+			})();
 		</script>
 	</body>
 </html>

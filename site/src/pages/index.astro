@@ -95,7 +95,7 @@ const comparisons = [
 					{features.map(f => (
 						<div class="flex flex-col">
 							<dt class="flex items-center gap-x-3 text-xl font-bold text-ctp-text">
-								<span class="text-2xl">{f.icon}</span>
+								<span class="text-2xl" role="img" aria-label={f.title}>{f.icon}</span>
 								{f.title}
 							</dt>
 							<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-ctp-subtext1">
