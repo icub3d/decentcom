@@ -1,0 +1,28 @@
+[package]
+name = "test-setup"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Bootstrap the decentcom test environment"
+
+[[bin]]
+name = "test-setup"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.5"
+bip39 = { version = "2", features = ["rand"] }
+bs58.workspace = true
+chacha20poly1305 = "0.10"
+chrono.workspace = true
+clap = { version = "4", features = ["derive", "env"] }
+ed25519-dalek.workspace = true
+hex.workspace = true
+keyring = { version = "3", features = ["sync-secret-service"] }
+rand.workspace = true
+rusqlite = "0.31"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zeroize = "1"

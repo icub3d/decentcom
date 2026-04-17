@@ -5,10 +5,10 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 clean: ## Remove test databases, media dirs, and OS keychain test entries
-	python3 scripts/test-setup.py --clean
+	cargo run -q --bin test-setup -- clean
 
 setup: clean ## Clean + bootstrap test DBs with users/roles/channels + store keys in keychain
-	python3 scripts/test-setup.py
+	cargo run -q --bin test-setup
 
 clean-identity: ## Remove all decentcom keys from the OS keychain (useful during testing)
 	@while secret-tool search application rust-keyring service decentcom 2>&1 | grep -q "attribute.username"; do \
