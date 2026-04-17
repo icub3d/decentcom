@@ -537,9 +537,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           };
         }
         case "THREAD_CREATE": {
-          const { channel_id, message_id, thread_id } = event.d as {
+          const { channel_id, parent_message_id, thread_id } = event.d as {
             channel_id: string;
-            message_id: string;
+            parent_message_id: string;
             thread_id: string;
           };
           const existing = state.messages[channel_id] ?? [];
@@ -547,7 +547,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
             messages: {
               ...state.messages,
               [channel_id]: existing.map((m) => {
-                if (m.id !== message_id) return m;
+                if (m.id !== parent_message_id) return m;
                 return {
                   ...m,
                   thread: {
