@@ -237,5 +237,24 @@ describe("useAccountManager", () => {
       expect(onSwitchDone).toHaveBeenCalledWith("pubkey-B");
       expect(result.current.isSwitching).toBe(false);
     });
+
+    it("uses preSetupAccount when import already switched backend active account", async () => {
+      // Simulate: importIdentity already changed activeAccount to pubkey-B
+      // before handleSetupComplete runs, so getState() would return pubkey-B.
+      useIdentityStore.setState({ activeAccount: "pubkey-B" });
+
+      const onSwitchDone = vi.fn();
+      const mockRefresh = vi.fn().mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useAccountManager());
+
+      await act(async () => {
+        // Pass preSetupAccount="pubkey-A" (captured before modal opened)
+        await result.current.handleSetupComplete(mockRefresh, onSwitchDone, "pubkey-A");
+      });
+
+      expect(mockSwitchAppStoreAccount).toHaveBeenCalledWith("pubkey-A", "pubkey-B");
+      expect(onSwitchDone).toHaveBeenCalledWith("pubkey-B");
+    });
   });
 });

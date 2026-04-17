@@ -27,6 +27,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
   const { generateIdentity, importIdentity, refresh } = useIdentity();
   const { handleSetupComplete } = useAccountManager();
   const [showSetup, setShowSetup] = useState(false);
+  const [preSetupAccount, setPreSetupAccount] = useState<string | null>(null);
   const [showBackup, setShowBackup] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
 
   const onSetupComplete = async () => {
     setShowSetup(false);
-    await handleSetupComplete(refresh, onSwitchAccount);
+    await handleSetupComplete(refresh, onSwitchAccount, preSetupAccount);
   };
 
   return (
@@ -157,7 +158,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
         ))}
       </div>
       <button
-        onClick={() => setShowSetup(true)}
+        onClick={() => { setPreSetupAccount(activeAccount); setShowSetup(true); }}
         className="mt-2 w-full py-2 text-sm text-ctp-subtext1 hover:text-ctp-blue hover:bg-ctp-surface0 rounded-lg transition border border-dashed border-ctp-overlay0"
       >
         + Add Account

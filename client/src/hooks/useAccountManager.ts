@@ -74,14 +74,22 @@ export function useAccountManager() {
   }, []);
 
   const handleSetupComplete = useCallback(
-    async (refresh: () => Promise<void>, onSwitchDone?: (pubkey: string) => void) => {
+    async (
+      refresh: () => Promise<void>,
+      onSwitchDone?: (pubkey: string) => void,
+      preSetupAccount?: string | null,
+    ) => {
       const { isSwitching: alreadySwitching, setIsSwitching } =
         useAccountManagerStore.getState();
       if (alreadySwitching) return;
 
       setIsSwitching(true);
       try {
-        const prevActive = useIdentityStore.getState().activeAccount;
+        // Use the pre-captured account from before the modal opened, because
+        // importIdentity already switches the active account on the backend
+        // before onComplete fires, so reading getState() here would see the
+        // new account and think nothing changed.
+        const prevActive = preSetupAccount ?? useIdentityStore.getState().activeAccount;
         await refresh();
         const newActive = useIdentityStore.getState().activeAccount;
         if (newActive && newActive !== prevActive) {
