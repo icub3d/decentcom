@@ -564,14 +564,14 @@ OPEN_CONFIG = {
             ]
         },
         {
-            "parent_message_id": "msg-ch-frontend-003",  # Dave's drag-and-drop question
+            "parent_message_id": "msg-ch-frontend-026",  # Dave's drag-and-drop question
             "replies": [
                 {"author": "alice", "content": "Definitely! Let's add that after we ship the basics.", "offset_min": 3},
                 {"author": "bob", "content": "I can help with the implementation if needed.", "offset_min": 5},
             ]
         },
         {
-            "parent_message_id": "msg-ch-backend-002",  # Bob's SFU question
+            "parent_message_id": "msg-ch-backend-030",  # Bob's SFU question
             "replies": [
                 {"author": "alice", "content": "Great question. We're evaluating mediasoup vs livekit right now.", "offset_min": 2},
                 {"author": "bob", "content": "Both solid options. mediasoup would keep us more self-contained.", "offset_min": 4},
@@ -595,20 +595,20 @@ OPEN_CONFIG = {
             ]
         },
         {
-            "message_id": "msg-ch-random-002",  # Alice's "That's the whole idea behind decentcom"
+            "message_id": "msg-ch-random-012",  # Alice's "That's the whole idea behind decentcom"
             "reactions": [
                 {"emoji": "🚀", "users": ["alice", "dave", "charlie"]},
                 {"emoji": "🙌", "users": ["bob"]},
             ]
         },
         {
-            "message_id": "msg-ch-random-000",  # Bob's "Anyone else think decentralized..."
+            "message_id": "msg-ch-random-010",  # Bob's "Anyone else think decentralized..."
             "reactions": [
                 {"emoji": "💯", "users": ["dave", "alice"]},
             ]
         },
         {
-            "message_id": "msg-ch-frontend-000",  # Dave's "The account switcher is looking great"
+            "message_id": "msg-ch-frontend-023",  # Dave's "The account switcher is looking great"
             "reactions": [
                 {"emoji": "👏", "users": ["alice"]},
                 {"emoji": "❤️", "users": ["bob", "dave"]},
@@ -663,7 +663,7 @@ PRIVATE_CONFIG = {
             ]
         },
         {
-            "parent_message_id": "msg-ch-feedback-001",  # Alice's "Glad to hear it. Any rough edges..."
+            "parent_message_id": "msg-ch-feedback-011",  # Alice's "Glad to hear it. Any rough edges..."
             "replies": [
                 {"author": "bob", "content": "Actually, now that you mention it, there's one more thing...", "offset_min": 2},
             ]
@@ -678,13 +678,13 @@ PRIVATE_CONFIG = {
             ]
         },
         {
-            "message_id": "msg-ch-roadmap-000",  # Alice's "Current priorities"
+            "message_id": "msg-ch-roadmap-007",  # Alice's "Current priorities"
             "reactions": [
                 {"emoji": "✅", "users": ["bob"]},
             ]
         },
         {
-            "message_id": "msg-ch-feedback-000",  # Bob's "The UI feels snappy"
+            "message_id": "msg-ch-feedback-010",  # Bob's "The UI feels snappy"
             "reactions": [
                 {"emoji": "🎯", "users": ["alice"]},
             ]
