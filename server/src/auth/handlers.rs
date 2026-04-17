@@ -5,7 +5,7 @@ use axum::{http::StatusCode, Json};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use rand::RngCore;
+use rand::RngCore as _;
 use serde::Serialize;
 use shared::auth::{
     AuthMeResponse, ChallengeRequest, ChallengeResponse, VerifyRequest, VerifyResponse,
@@ -31,7 +31,7 @@ pub(super) async fn challenge(
     }
 
     let mut nonce = [0u8; 32];
-    rand::rngs::OsRng.fill_bytes(&mut nonce);
+    rand::rng().fill_bytes(&mut nonce);
 
     state.challenge_store.insert(req.pubkey, nonce.to_vec());
 

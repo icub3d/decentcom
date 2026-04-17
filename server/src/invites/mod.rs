@@ -18,10 +18,10 @@ pub fn router() -> Router<AppState> {
 }
 
 pub fn generate_code() -> String {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut code = String::with_capacity(INVITE_CODE_LEN);
     for _ in 0..INVITE_CODE_LEN {
-        let index = rng.gen_range(0..INVITE_CODE_ALPHABET.len());
+        let index = rng.random_range(0..INVITE_CODE_ALPHABET.len());
         code.push(INVITE_CODE_ALPHABET[index] as char);
     }
     code

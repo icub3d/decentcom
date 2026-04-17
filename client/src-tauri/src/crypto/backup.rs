@@ -57,7 +57,7 @@ pub fn encrypt_key(seed: &[u8; SEED_LEN], passphrase: &str) -> Result<Vec<u8>, B
     // Generate random salt and nonce.
     let mut salt = [0u8; SALT_LEN];
     let mut nonce_bytes = [0u8; NONCE_LEN];
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     rng.fill_bytes(&mut salt);
     rng.fill_bytes(&mut nonce_bytes);
 
