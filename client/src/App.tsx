@@ -25,7 +25,7 @@ function App() {
     importIdentity,
     refresh,
   } = useIdentity();
-  const { currentServerId, addServer, initTheme } = useAppStore();
+  const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
   const { connect, status } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
@@ -50,6 +50,15 @@ function App() {
       void initAppStoreForAccount(publicKey);
     }
   }, [hasIdentity, publicKey, loading]);
+
+  // If the store has servers from a backup restore but no current server
+  // selected, pick the first one so the auto-connect effect can fire.
+  useEffect(() => {
+    if (hasIdentity && !loading && !isSwitching && !currentServerId && useAppStore.persist.hasHydrated()) {
+      const first = Object.keys(servers)[0];
+      if (first) setCurrentServer(first);
+    }
+  }, [hasIdentity, loading, isSwitching, currentServerId, servers, setCurrentServer]);
 
   // Clear connection errors once the gateway is connected
   useEffect(() => {

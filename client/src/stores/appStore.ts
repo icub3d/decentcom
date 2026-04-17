@@ -10,6 +10,12 @@ export interface ServerConnection {
   name: string;
 }
 
+export interface AppBackupState {
+  version: 1;
+  servers: Record<string, ServerConnection>;
+  theme: ThemeName;
+}
+
 interface AppStore {
   currentServerId: string | null;
   servers: Record<string, ServerConnection>;
@@ -19,6 +25,8 @@ interface AppStore {
   setCurrentServer: (id: string | null) => void;
   setTheme: (theme: ThemeName) => void;
   initTheme: () => void;
+  getStateForBackup: () => AppBackupState;
+  loadFromBackup: (state: AppBackupState) => void;
 }
 
 function normalizeAddress(address: string): string {
@@ -88,6 +96,14 @@ export const useAppStore = create<AppStore>()(
       initTheme: () => {
         const theme = get().theme;
         applyTheme(theme);
+      },
+      getStateForBackup: () => {
+        const { servers, theme } = get();
+        return { version: 1, servers, theme };
+      },
+      loadFromBackup: (state) => {
+        applyTheme(state.theme);
+        set({ servers: state.servers, theme: state.theme, currentServerId: null });
       },
     }),
     {

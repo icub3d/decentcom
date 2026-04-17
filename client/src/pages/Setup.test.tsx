@@ -75,12 +75,15 @@ describe("Setup", () => {
     ).toBeInTheDocument();
   });
 
-  it("successful backup import calls onComplete", async () => {
+  it("successful backup import without metadata calls onComplete", async () => {
     vi.mocked(open).mockResolvedValueOnce("/tmp/test.dckb");
     vi.mocked(keyBackupReadPubkey).mockResolvedValueOnce({
       pubkey: "ABC123DEF456",
     });
-    vi.mocked(keyImport).mockResolvedValueOnce({ pubkey: "ABC123DEF456" });
+    vi.mocked(keyImport).mockResolvedValueOnce({
+      pubkey: "ABC123DEF456",
+      metadata: null,
+    });
 
     render(
       <Setup
@@ -105,6 +108,55 @@ describe("Setup", () => {
       expect(keyImport).toHaveBeenCalledWith("my-passphrase", "/tmp/test.dckb");
       expect(onComplete).toHaveBeenCalled();
     });
+  });
+
+  it("backup import with metadata shows settings-restored confirmation", async () => {
+    vi.mocked(open).mockResolvedValueOnce("/tmp/test.dckb");
+    vi.mocked(keyBackupReadPubkey).mockResolvedValueOnce({
+      pubkey: "ABC123DEF456",
+    });
+    vi.mocked(keyImport).mockResolvedValueOnce({
+      pubkey: "ABC123DEF456",
+      metadata: JSON.stringify({
+        version: 1,
+        servers: {
+          "http://open:3000": {
+            id: "http://open:3000",
+            address: "http://open:3000",
+            name: "Open Server",
+          },
+        },
+        theme: "frappe",
+      }),
+    });
+
+    render(
+      <Setup
+        onGenerate={onGenerate}
+        onImport={onImport}
+        onComplete={onComplete}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Restore from Backup File"));
+    fireEvent.click(screen.getByText(/Choose .dckb file/));
+    await waitFor(() => {
+      expect(screen.getByText(/ABC123/)).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText("Passphrase");
+    fireEvent.change(input, { target: { value: "my-passphrase" } });
+    fireEvent.click(screen.getByText("Restore Identity"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Settings Restored")).toBeInTheDocument();
+    });
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByText("frappe")).toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Continue"));
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it("after clicking Create New Identity, the Key Safety screen is rendered", async () => {

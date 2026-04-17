@@ -361,19 +361,29 @@ pub struct BackupPubkeyInfo {
     pub pubkey: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct KeyImportResult {
+    pub pubkey: String,
+    pub metadata: Option<String>,
+}
+
 #[tauri::command]
-pub async fn key_export(passphrase: String, path: String) -> Result<(), String> {
+pub async fn key_export(
+    passphrase: String,
+    path: String,
+    metadata: Option<String>,
+) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
-        inner_key_export(&passphrase, &path).map_err(|e| e.to_string())
+        inner_key_export(&passphrase, &path, metadata.as_deref()).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-fn inner_key_export(pass: &str, path: &str) -> Result<(), IdentityError> {
+fn inner_key_export(pass: &str, path: &str, metadata: Option<&str>) -> Result<(), IdentityError> {
     let pubkey = get_active_pubkey()?;
     let seed = get_seed_for(&pubkey)?;
-    let data = backup::encrypt_key(&seed, pass)
+    let data = backup::encrypt_key(&seed, pass, metadata)
         .map_err(|e| IdentityError::Crypto(e.to_string()))?;
     std::fs::write(path, data)
         .map_err(|e| IdentityError::Crypto(format!("Failed to write backup file: {e}")))?;
@@ -381,7 +391,7 @@ fn inner_key_export(pass: &str, path: &str) -> Result<(), IdentityError> {
 }
 
 #[tauri::command]
-pub async fn key_import(passphrase: String, path: String) -> Result<PublicKeyInfo, String> {
+pub async fn key_import(passphrase: String, path: String) -> Result<KeyImportResult, String> {
     tokio::task::spawn_blocking(move || {
         inner_key_import(&passphrase, &path).map_err(|e| e.to_string())
     })
@@ -389,13 +399,13 @@ pub async fn key_import(passphrase: String, path: String) -> Result<PublicKeyInf
     .map_err(|e| e.to_string())?
 }
 
-fn inner_key_import(pass: &str, path: &str) -> Result<PublicKeyInfo, IdentityError> {
+fn inner_key_import(pass: &str, path: &str) -> Result<KeyImportResult, IdentityError> {
     let data = std::fs::read(path)
         .map_err(|e| IdentityError::Crypto(format!("Failed to read backup file: {e}")))?;
-    let seed = backup::decrypt_key(&data, pass)
+    let (seed, metadata) = backup::decrypt_key(&data, pass)
         .map_err(|e| IdentityError::Crypto(e.to_string()))?;
     let pubkey = store_seed(&seed)?;
-    Ok(PublicKeyInfo { pubkey })
+    Ok(KeyImportResult { pubkey, metadata })
 }
 
 #[tauri::command]

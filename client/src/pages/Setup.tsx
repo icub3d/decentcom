@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { IdentityInfo, PublicKeyInfo } from "../hooks/useIdentity";
 import { KeySafety } from "./KeySafety";
 import { keyImport, keyBackupReadPubkey } from "../services/identity";
+import { useAppStore, type AppBackupState } from "../stores/appStore";
 
 function shortPubkey(pubkey: string): string {
   if (pubkey.length <= 12) return pubkey;
@@ -17,7 +18,7 @@ interface SetupProps {
 }
 
 export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps) {
-  const [view, setView] = useState<"choice" | "safety" | "import" | "backup">("choice");
+  const [view, setView] = useState<"choice" | "safety" | "import" | "backup" | "settings-restored">("choice");
   const [generatedIdentity, setGeneratedIdentity] = useState<IdentityInfo | null>(null);
   const [importText, setImportText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,9 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
   const [backupFile, setBackupFile] = useState<string | null>(null);
   const [backupPubkey, setBackupPubkey] = useState<string | null>(null);
   const [backupPassphrase, setBackupPassphrase] = useState("");
+  const [restoredSettings, setRestoredSettings] = useState<AppBackupState | null>(null);
+
+  const loadFromBackup = useAppStore((s) => s.loadFromBackup);
 
   const handleGenerate = async () => {
     try {
@@ -83,7 +87,20 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
     try {
       setLoading(true);
       setError(null);
-      await keyImport(backupPassphrase, backupFile);
+      const result = await keyImport(backupPassphrase, backupFile);
+      if (result.metadata) {
+        try {
+          const parsed = JSON.parse(result.metadata) as AppBackupState;
+          if (parsed.version === 1 && parsed.servers) {
+            loadFromBackup(parsed);
+            setRestoredSettings(parsed);
+            setView("settings-restored");
+            return;
+          }
+        } catch {
+          // Ignore malformed metadata — key import still succeeded.
+        }
+      }
       onComplete();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -101,6 +118,38 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
 
   if (view === "safety" && generatedIdentity) {
     return <KeySafety identity={generatedIdentity} onComplete={onComplete} />;
+  }
+
+  if (view === "settings-restored" && restoredSettings) {
+    const serverCount = Object.keys(restoredSettings.servers).length;
+    return (
+      <div className="max-w-xl mx-auto p-8 space-y-6 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
+        <div className="text-center space-y-2">
+          <div className="text-4xl">✓</div>
+          <h2 className="text-2xl font-bold text-ctp-green">Settings Restored</h2>
+        </div>
+        <p className="text-ctp-subtext1">
+          Your identity was imported successfully. The following settings were
+          also restored from the backup:
+        </p>
+        <ul className="space-y-1 text-sm text-ctp-text">
+          <li>
+            <span className="text-ctp-subtext0">Servers:</span>{" "}
+            <span className="font-semibold">{serverCount}</span>
+          </li>
+          <li>
+            <span className="text-ctp-subtext0">Theme:</span>{" "}
+            <span className="font-semibold font-mono">{restoredSettings.theme}</span>
+          </li>
+        </ul>
+        <button
+          onClick={onComplete}
+          className="w-full py-3 bg-ctp-green hover:bg-ctp-green/80 text-ctp-crust rounded-lg font-semibold transition-colors shadow-lg cursor-pointer"
+        >
+          Continue
+        </button>
+      </div>
+    );
   }
 
   if (view === "backup") {
