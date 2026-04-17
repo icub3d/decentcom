@@ -14,7 +14,7 @@ Implement the feature: **$ARGUMENTS**
 
 1. **Find the issue.** Locate the GitHub issue for this feature:
    ```
-   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue list --label feature --search "$ARGUMENTS" --limit 5 --json number,title,url
+   GH_PAGER= GH_PROMPT_DISABLED=1 gh issue list --search "$ARGUMENTS" --limit 5 --json number,title,url
    ```
    Or if given an issue number directly:
    ```

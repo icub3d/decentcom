@@ -28,18 +28,16 @@ Create a GitHub issue for the feature: **$ARGUMENTS**
    ```
    If an issue already exists for this feature, update it instead of creating a new one.
 
-4. **Determine the phase label.** Based on `docs/features/FEATURES.md` or the feature's dependencies, pick the right phase:
-   - `phase:1-foundation`
-   - `phase:2-core-ux`
-   - `phase:3-media-voice`
-   - `phase:4-operations`
+4. **Determine the appropriate labels.** Based on the feature's scope and nature, pick the right labels:
+   - **Area:** `area:api`, `area:ux`, `area:core`, `area:infra`, `area:docs`
+   - **Type:** `type:feature`, `type:bug`, `type:design`, `type:research`, `type:refactor`
 
 5. **Draft the issue body** using the structure below.
 
 6. **Create the issue:**
    ```
-   gh issue create --title "Feature: <Title>" \
-     --label "feature,<phase-label>,status:planned" \
+   gh issue create --title "<Type>: <Title>" \
+     --label "<type-label>,<area-label>,status:planned" \
      --body "<body>"
    ```
 

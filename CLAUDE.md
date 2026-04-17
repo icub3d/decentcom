@@ -50,22 +50,33 @@ Before making significant architectural decisions, check `docs/design/` — seve
 - `docs/design/server-model.md` — membership modes, feature flags, permissions
 - `docs/design/storage.md` — backend options, media storage, retention
 
-## Implementation Order
+## Issue Labeling and Organization
 
-Features should be implemented in milestone order as defined in `docs/design/overview.md`:
+We use a component-based labeling schema for issues:
 
-1. **Foundation** — server binary scaffolding, Tauri client shell, pubkey auth (challenge-response), basic text channels
-2. **Core UX** — DMs, roles, permissions, server settings, invite system
-3. **Voice & Video** — WebRTC voice channels, video, screen share (resolve SFU strategy first — see `docs/design/architecture.md` open questions)
-4. **Federation** — cross-server identity, inter-server messaging
-5. **Managed Hosting** — one-click deploy, billing, support tooling
+**Areas (Scope):**
+- `area:api` (Backend endpoints, REST, DB, Gateway)
+- `area:ux` (Frontend UI, React components, Tailwind)
+- `area:core` (Shared Rust logic, crypto, Tauri shell)
+- `area:infra` (Deployment, Docker, build tools)
+- `area:docs` (Documentation, OpenAPI specs, architecture)
 
-Before starting any feature, check the relevant design doc for open questions that must be resolved first. Do not implement features that depend on unresolved architectural decisions without first documenting the decision in the design doc.
+**Types (Nature of work):**
+- `type:feature` (New features)
+- `type:bug` (Bug fixes)
+- `type:design` (Architectural changes, major design decisions)
+- `type:research` (Spikes, investigating new tech)
+- `type:refactor` (Code improvements without behavioral changes)
+
+**Statuses:**
+- `status:planned`
+- `status:in-progress`
+- `status:complete`
 
 ## Implementing Features
 
 Follow this process for each feature:
-
+...
 1. **Read the design doc** for that milestone area before writing any code. Identify and resolve open questions.
 2. **Start with the shared types** (`shared/` crate) — define the data model and wire protocol types that both server and client will use.
 3. **Implement the server side** — REST endpoints in `server/`, WebSocket events, storage trait methods.

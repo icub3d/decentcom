@@ -97,7 +97,8 @@ Verify the implementation of: **$ARGUMENTS**
 - **Styling**: Tailwind CSS + Catppuccin themes.
 - **Identity**: Ed25519 keys, BIP39 seed phrases.
 - **Realtime**: WebSocket gateway.
-- **Issues**: All feature issues are on GitHub with `feature` label.
+- **Issues**: All tasks are tracked via GitHub issues using `type:*` and `area:*` labels.
+
 
 ## Commands
 
