@@ -1,0 +1,159 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const base = import.meta.env.BASE_URL;
+
+const features = [
+	{
+		title: "Identity Ownership",
+		description: "Your account is a key pair you generate. No email, no phone number, no password required.",
+		icon: "🔑"
+	},
+	{
+		title: "No Passwords",
+		description: "Authentication is cryptographic. There is nothing for a server to steal and nothing for a breach to expose.",
+		icon: "🛡️"
+	},
+	{
+		title: "Self-hostable",
+		description: "Any community can run its own server. No subscription, no third-party Terms of Service, no deplatforming risk.",
+		icon: "🏠"
+	},
+	{
+		title: "Cryptographically Secure",
+		description: "Every authentication action is signed. Servers verify identity without storing secrets.",
+		icon: "🔒"
+	},
+	{
+		title: "Server Operator Control",
+		description: "Each server sets its own policies — open, invite-only, or allowlist — without asking permission from anyone.",
+		icon: "⚙️"
+	},
+	{
+		title: "Open Source",
+		description: "MIT-licensed. Inspect it, fork it, self-host it. The core will always be free.",
+		icon: "🤝"
+	}
+];
+
+const comparisons = [
+	{
+		title: "Identity",
+		decentcom: "Your account is a cryptographic key pair you own.",
+		others: "Your account exists at the platform's discretion, often tied to personal info."
+	},
+	{
+		title: "Security",
+		decentcom: "Authentication is cryptographic. No passwords stored on servers.",
+		others: "Most platforms store a password or credential on their servers."
+	},
+	{
+		title: "Ownership",
+		decentcom: "Communities run their own servers on their own infrastructure.",
+		others: "On centralized platforms, servers can be removed without recourse."
+	},
+	{
+		title: "Privacy",
+		decentcom: "Servers verify identity without requiring or storing secrets.",
+		others: "Centralized services accumulate metadata about who you talk to and when."
+	}
+];
+---
+
+<BaseLayout title="Your identity. Your server. Your community.">
+	<!-- Hero Section -->
+	<section class="relative overflow-hidden py-24 sm:py-32">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+			<h1 class="text-5xl font-extrabold tracking-tight text-ctp-text sm:text-7xl">
+				Your identity. Your server. <span class="text-ctp-mauve">Your community.</span>
+			</h1>
+			<p class="mt-6 mx-auto max-w-2xl text-lg leading-8 text-ctp-subtext1">
+				decentcom is open-source community communication software you can self-host. 
+				Your identity is a cryptographic key pair — no password, no email, no central account.
+			</p>
+			<div class="mt-10 flex items-center justify-center gap-x-6">
+				<a href={`${base}/download`} class="rounded-lg bg-ctp-mauve px-6 py-3 text-lg font-semibold text-ctp-crust shadow-lg hover:bg-ctp-mauve/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ctp-mauve transition">
+					Get Started
+				</a>
+				<a href="https://github.com/icub3d/decentcom" class="text-lg font-semibold leading-6 text-ctp-subtext1 hover:text-ctp-mauve transition-colors">
+					View on GitHub <span aria-hidden="true">→</span>
+				</a>
+			</div>
+		</div>
+	</section>
+
+	<!-- Features Grid -->
+	<section id="features" class="bg-ctp-mantle py-24 sm:py-32">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+			<div class="mx-auto max-w-2xl text-center">
+				<h2 class="text-base font-semibold leading-7 text-ctp-mauve uppercase tracking-wider">Features</h2>
+				<p class="mt-2 text-3xl font-bold tracking-tight text-ctp-text sm:text-4xl">
+					Everything you need for a decent community.
+				</p>
+			</div>
+			<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+					{features.map(f => (
+						<div class="flex flex-col">
+							<dt class="flex items-center gap-x-3 text-xl font-bold text-ctp-text">
+								<span class="text-2xl">{f.icon}</span>
+								{f.title}
+							</dt>
+							<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-ctp-subtext1">
+								<p class="flex-auto">{f.description}</p>
+							</dd>
+						</div>
+					))}
+				</dl>
+			</div>
+		</div>
+	</section>
+
+	<!-- Why decentcom? / Comparison -->
+	<section class="py-24 sm:py-32">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+			<div class="mx-auto max-w-2xl text-center">
+				<h2 class="text-base font-semibold leading-7 text-ctp-mauve uppercase tracking-wider">Why decentcom?</h2>
+				<p class="mt-2 text-3xl font-bold tracking-tight text-ctp-text sm:text-4xl">
+					How we compare to typical platforms.
+				</p>
+			</div>
+			<div class="mt-16 overflow-hidden rounded-2xl border border-ctp-surface1 bg-ctp-mantle shadow-xl">
+				<table class="w-full text-left">
+					<thead class="border-b border-ctp-surface1 bg-ctp-surface0/50">
+						<tr>
+							<th class="px-6 py-4 text-sm font-semibold text-ctp-subtext1">Category</th>
+							<th class="px-6 py-4 text-sm font-semibold text-ctp-mauve">decentcom</th>
+							<th class="px-6 py-4 text-sm font-semibold text-ctp-subtext1">Other platforms</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-ctp-surface1">
+						{comparisons.map(c => (
+							<tr>
+								<td class="px-6 py-4 font-semibold text-ctp-text">{c.title}</td>
+								<td class="px-6 py-4 text-sm text-ctp-subtext1">{c.decentcom}</td>
+								<td class="px-6 py-4 text-sm text-ctp-subtext0">{c.others}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<!-- Call to Action -->
+	<section class="bg-ctp-mauve py-16 sm:py-24">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+			<h2 class="text-3xl font-extrabold tracking-tight text-ctp-crust sm:text-4xl">
+				Ready to reclaim your community?
+			</h2>
+			<div class="mt-10 flex items-center justify-center gap-x-6">
+				<a href={`${base}/download`} class="rounded-lg bg-ctp-crust px-6 py-3 text-lg font-semibold text-ctp-text shadow-lg hover:bg-ctp-crust/90 transition">
+					Download Now
+				</a>
+				<a href="https://github.com/icub3d/decentcom" class="text-lg font-semibold leading-6 text-ctp-crust/80 hover:text-ctp-crust transition-colors">
+					Explore Source Code
+				</a>
+			</div>
+		</div>
+	</section>
+</BaseLayout>

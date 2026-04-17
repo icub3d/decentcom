@@ -1,0 +1,104 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Features">
+	<section class="py-24 sm:py-32">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+			<div class="mx-auto max-w-2xl text-center">
+				<h2 class="text-base font-semibold leading-7 text-ctp-mauve uppercase tracking-wider">Feature Tour</h2>
+				<h1 class="mt-2 text-4xl font-bold tracking-tight text-ctp-text sm:text-6xl">
+					How decentcom works.
+				</h1>
+				<p class="mt-6 text-lg leading-8 text-ctp-subtext1">
+					A communication platform built on the principles of identity ownership and community sovereignty.
+				</p>
+			</div>
+
+			<div class="mt-24 space-y-24 sm:mt-32 sm:space-y-32">
+				<!-- Detailed Feature 1 -->
+				<div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
+					<div>
+						<h3 class="text-3xl font-bold text-ctp-text">Identity is a Key, Not an Account</h3>
+						<p class="mt-4 text-lg text-ctp-subtext1">
+							In most chat services, your account exists as a row in the platform's database. 
+							In decentcom, your account is an Ed25519 cryptographic key pair that *you* generate.
+						</p>
+						<ul class="mt-8 space-y-4">
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								No email, phone number, or personal info required.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Use a 24-word recovery phrase to restore your identity anywhere.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Your identity is portable across all servers you join.
+							</li>
+						</ul>
+					</div>
+					<div class="rounded-2xl border border-ctp-surface1 bg-ctp-mantle p-8 shadow-2xl">
+						<div class="aspect-video flex items-center justify-center text-8xl">🔑</div>
+					</div>
+				</div>
+
+				<!-- Detailed Feature 2 -->
+				<div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center lg:flex-row-reverse">
+					<div class="lg:order-last">
+						<h3 class="text-3xl font-bold text-ctp-text">Privacy by Design</h3>
+						<p class="mt-4 text-lg text-ctp-subtext1">
+							Authentication is done via challenge-response signing. 
+							Servers verify who you are without ever seeing a password or storing a secret.
+						</p>
+						<ul class="mt-8 space-y-4">
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Private keys never leave your client's core process.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								No central operator logging your connections.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								You choose which servers to trust with your metadata.
+							</li>
+						</ul>
+					</div>
+					<div class="rounded-2xl border border-ctp-surface1 bg-ctp-mantle p-8 shadow-2xl">
+						<div class="aspect-video flex items-center justify-center text-8xl">🛡️</div>
+					</div>
+				</div>
+
+				<!-- Detailed Feature 3 -->
+				<div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
+					<div>
+						<h3 class="text-3xl font-bold text-ctp-text">Community Sovereignty</h3>
+						<p class="mt-4 text-lg text-ctp-subtext1">
+							decentcom is designed for groups that want total control over their data and community.
+						</p>
+						<ul class="mt-8 space-y-4">
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Self-host with a single binary or Docker container.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Multiple membership modes: Open, Invite-only, or Allowlist.
+							</li>
+							<li class="flex gap-x-3 text-ctp-subtext0">
+								<span class="text-ctp-mauve font-bold">✓</span>
+								Full role-based permission system for granular control.
+							</li>
+						</ul>
+					</div>
+					<div class="rounded-2xl border border-ctp-surface1 bg-ctp-mantle p-8 shadow-2xl">
+						<div class="aspect-video flex items-center justify-center text-8xl">🏘️</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+</BaseLayout>

@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Download">
+	<section class="py-24 sm:py-32">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+			<h2 class="text-base font-semibold leading-7 text-ctp-mauve uppercase tracking-wider">Get Started</h2>
+			<h1 class="mt-2 text-4xl font-bold tracking-tight text-ctp-text sm:text-6xl">
+				Download the client.
+			</h1>
+			<p class="mt-6 mx-auto max-w-2xl text-lg leading-8 text-ctp-subtext1">
+				Decentralized communication is ready for your community. 
+				Binaries for all platforms are coming soon.
+			</p>
+
+			<div class="mx-auto mt-20 max-w-2xl">
+				<div class="grid grid-cols-1 gap-8 sm:grid-cols-2">
+					<div class="rounded-2xl border border-ctp-surface1 bg-ctp-mantle p-8 text-center shadow-xl">
+						<div class="text-4xl mb-4">🐧 / 🪟 / 🍎</div>
+						<h3 class="text-xl font-bold text-ctp-text">Standard Downloads</h3>
+						<p class="mt-2 text-sm text-ctp-subtext0">Coming soon for Windows, Linux, and macOS.</p>
+						<div class="mt-6 inline-block w-full py-2 bg-ctp-surface1 text-ctp-subtext1 rounded font-semibold opacity-50 cursor-not-allowed">
+							Coming Soon
+						</div>
+					</div>
+					<div class="rounded-2xl border border-ctp-mauve bg-ctp-mantle p-8 text-center shadow-xl">
+						<div class="text-4xl mb-4">⚙️</div>
+						<h3 class="text-xl font-bold text-ctp-text">Build from Source</h3>
+						<p class="mt-2 text-sm text-ctp-subtext0">Developer-focused: build the client locally with Rust and Node.js.</p>
+						<a href="https://github.com/icub3d/decentcom#building-from-source" class="mt-6 inline-block w-full py-2 bg-ctp-mauve text-ctp-crust rounded font-semibold hover:bg-ctp-mauve/90 transition">
+							View Guide
+						</a>
+					</div>
+				</div>
+			</div>
+
+			<div class="mx-auto mt-24 max-w-2xl text-left border-t border-ctp-surface1 pt-16">
+				<h3 class="text-2xl font-bold text-ctp-text mb-6">Frequently Asked Questions</h3>
+				<dl class="space-y-8">
+					<div>
+						<dt class="text-lg font-semibold text-ctp-text">Is there a web client?</dt>
+						<dd class="mt-2 text-ctp-subtext1">Currently, decentcom is focused on a desktop application for better security (private keys are stored in the OS keychain and signing happens in the Rust core, not the browser).</dd>
+					</div>
+					<div>
+						<dt class="text-lg font-semibold text-ctp-text">How do I host my own server?</dt>
+						<dd class="mt-2 text-ctp-subtext1">A server can be run as a single binary or a Docker container. Check the <a href="https://github.com/icub3d/decentcom/tree/main/server" class="text-ctp-mauve hover:underline">server documentation</a> for instructions.</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
+	</section>
+</BaseLayout>
