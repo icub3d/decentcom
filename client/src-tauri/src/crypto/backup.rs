@@ -1,6 +1,6 @@
 //! Encrypted key backup: encrypt/decrypt Ed25519 seeds for portable recovery.
 //!
-//! File format (137 bytes total):
+//! ## Version 1 format (137 bytes, read-only — legacy)
 //! ```text
 //! Offset  Size  Field
 //! 0       4     Magic bytes: "DCKB"
@@ -13,6 +13,16 @@
 //! 65      24    XChaCha20-Poly1305 nonce
 //! 89      48    Ciphertext (32-byte seed + 16-byte Poly1305 tag)
 //! ```
+//!
+//! ## Version 2 format (variable length — new writes)
+//! Bytes 0-136 are identical to v1 (with version byte = 2).
+//! ```text
+//! 137     4     Metadata ciphertext length N (LE u32; 0 = no metadata)
+//! --- only present when N > 0 ---
+//! 141     24    Metadata XChaCha20-Poly1305 nonce
+//! 165     N     Encrypted metadata (UTF-8 JSON + 16-byte Poly1305 tag)
+//! ```
+//! Metadata is encrypted with the same Argon2id-derived key, fresh nonce.
 
 use argon2::Argon2;
 use chacha20poly1305::{
@@ -24,17 +34,22 @@ use rand::RngCore;
 use zeroize::Zeroizing;
 
 const MAGIC: &[u8; 4] = b"DCKB";
-const FORMAT_VERSION: u8 = 1;
-const EXPECTED_FILE_SIZE: usize = 137;
+const FORMAT_VERSION_V1: u8 = 1;
+const FORMAT_VERSION_V2: u8 = 2;
 
 // Argon2id defaults — strong but reasonable on modern hardware.
-const DEFAULT_MEMORY_KIB: u32 = 64 * 1024; // 64 MiB (3.4× OWASP minimum; old files decrypt fine via header params)
+const DEFAULT_MEMORY_KIB: u32 = 64 * 1024; // 64 MiB
 const DEFAULT_TIME_COST: u32 = 3;
 const DEFAULT_PARALLELISM: u32 = 4;
 
 const SALT_LEN: usize = 16;
 const NONCE_LEN: usize = 24;
 const SEED_LEN: usize = 32;
+
+/// Size of the fixed key section shared by v1 and v2.
+const KEY_SECTION_SIZE: usize = 137;
+/// Minimum size of a v2 file (key section + 4-byte metadata length).
+const V2_MIN_SIZE: usize = KEY_SECTION_SIZE + 4;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BackupError {
@@ -48,23 +63,24 @@ pub enum BackupError {
     PubkeyMismatch,
 }
 
-/// Encrypt a 32-byte Ed25519 seed into the DCKB backup format.
-pub fn encrypt_key(seed: &[u8; SEED_LEN], passphrase: &str) -> Result<Vec<u8>, BackupError> {
-    // Derive the public key from the seed for the cleartext header.
+/// Encrypt a 32-byte Ed25519 seed into the DCKB v2 backup format.
+/// Pass `metadata` as a JSON string to include optional encrypted app state.
+pub fn encrypt_key(
+    seed: &[u8; SEED_LEN],
+    passphrase: &str,
+    metadata: Option<&str>,
+) -> Result<Vec<u8>, BackupError> {
     let signing_key = SigningKey::from_bytes(seed);
     let pubkey_bytes = signing_key.verifying_key().to_bytes();
 
-    // Generate random salt and nonce.
     let mut salt = [0u8; SALT_LEN];
     let mut nonce_bytes = [0u8; NONCE_LEN];
     let mut rng = rand::rng();
     rng.fill_bytes(&mut salt);
     rng.fill_bytes(&mut nonce_bytes);
 
-    // Derive encryption key with Argon2id.
     let enc_key = derive_key(passphrase, &salt)?;
 
-    // Encrypt the seed.
     let cipher = XChaCha20Poly1305::new_from_slice(enc_key.as_ref())
         .map_err(|e| BackupError::Kdf(e.to_string()))?;
     let nonce = XNonce::from_slice(&nonce_bytes);
@@ -72,10 +88,9 @@ pub fn encrypt_key(seed: &[u8; SEED_LEN], passphrase: &str) -> Result<Vec<u8>, B
         .encrypt(nonce, seed.as_slice())
         .map_err(|_| BackupError::DecryptionFailed)?;
 
-    // Assemble the file.
-    let mut out = Vec::with_capacity(EXPECTED_FILE_SIZE);
+    let mut out = Vec::with_capacity(V2_MIN_SIZE);
     out.extend_from_slice(MAGIC);
-    out.push(FORMAT_VERSION);
+    out.push(FORMAT_VERSION_V2);
     out.extend_from_slice(&pubkey_bytes);
     out.extend_from_slice(&DEFAULT_MEMORY_KIB.to_le_bytes());
     out.extend_from_slice(&DEFAULT_TIME_COST.to_le_bytes());
@@ -83,13 +98,40 @@ pub fn encrypt_key(seed: &[u8; SEED_LEN], passphrase: &str) -> Result<Vec<u8>, B
     out.extend_from_slice(&salt);
     out.extend_from_slice(&nonce_bytes);
     out.extend_from_slice(&ciphertext);
+    // Now at byte 137.
 
-    debug_assert_eq!(out.len(), EXPECTED_FILE_SIZE);
+    match metadata {
+        None => {
+            out.extend_from_slice(&0u32.to_le_bytes());
+        }
+        Some(meta) => {
+            let mut meta_nonce_bytes = [0u8; NONCE_LEN];
+            rng.fill_bytes(&mut meta_nonce_bytes);
+
+            let meta_cipher = XChaCha20Poly1305::new_from_slice(enc_key.as_ref())
+                .map_err(|e| BackupError::Kdf(e.to_string()))?;
+            let meta_nonce = XNonce::from_slice(&meta_nonce_bytes);
+            let meta_ct = meta_cipher
+                .encrypt(meta_nonce, meta.as_bytes())
+                .map_err(|_| BackupError::DecryptionFailed)?;
+
+            let meta_ct_len = meta_ct.len() as u32;
+            out.extend_from_slice(&meta_ct_len.to_le_bytes());
+            out.extend_from_slice(&meta_nonce_bytes);
+            out.extend_from_slice(&meta_ct);
+        }
+    }
+
     Ok(out)
 }
 
-/// Decrypt a DCKB backup file, returning the 32-byte Ed25519 seed.
-pub fn decrypt_key(data: &[u8], passphrase: &str) -> Result<Zeroizing<[u8; SEED_LEN]>, BackupError> {
+/// Decrypt a DCKB backup file (v1 or v2).
+/// Returns `(seed, metadata_json)` where `metadata_json` is `None` for v1
+/// files or v2 files without embedded metadata.
+pub fn decrypt_key(
+    data: &[u8],
+    passphrase: &str,
+) -> Result<(Zeroizing<[u8; SEED_LEN]>, Option<String>), BackupError> {
     let parsed = parse_header(data)?;
 
     let enc_key = derive_key_with_params(
@@ -111,13 +153,49 @@ pub fn decrypt_key(data: &[u8], passphrase: &str) -> Result<Zeroizing<[u8; SEED_
         .try_into()
         .map_err(|_| BackupError::InvalidFormat("unexpected plaintext length".into()))?;
 
-    // Verify the decrypted seed produces the same public key stored in the header.
     let signing_key = SigningKey::from_bytes(&seed);
     if signing_key.verifying_key().to_bytes() != parsed.pubkey {
         return Err(BackupError::PubkeyMismatch);
     }
 
-    Ok(Zeroizing::new(seed))
+    if parsed.version != FORMAT_VERSION_V2 {
+        return Ok((Zeroizing::new(seed), None));
+    }
+
+    // V2: read optional metadata.
+    if data.len() < V2_MIN_SIZE {
+        return Ok((Zeroizing::new(seed), None));
+    }
+    let meta_ct_len =
+        u32::from_le_bytes(data[KEY_SECTION_SIZE..V2_MIN_SIZE].try_into().unwrap()) as usize;
+    if meta_ct_len == 0 {
+        return Ok((Zeroizing::new(seed), None));
+    }
+
+    let meta_nonce_start = V2_MIN_SIZE;
+    let meta_nonce_end = meta_nonce_start + NONCE_LEN;
+    let meta_ct_start = meta_nonce_end;
+    let meta_ct_end = meta_ct_start + meta_ct_len;
+
+    if data.len() < meta_ct_end {
+        return Err(BackupError::InvalidFormat(
+            "v2 file truncated in metadata section".into(),
+        ));
+    }
+
+    let meta_nonce = XNonce::from_slice(&data[meta_nonce_start..meta_nonce_end]);
+    let meta_ciphertext = &data[meta_ct_start..meta_ct_end];
+
+    let meta_cipher = XChaCha20Poly1305::new_from_slice(enc_key.as_ref())
+        .map_err(|e| BackupError::Kdf(e.to_string()))?;
+    let meta_plaintext = meta_cipher
+        .decrypt(meta_nonce, meta_ciphertext)
+        .map_err(|_| BackupError::DecryptionFailed)?;
+
+    let meta_json = String::from_utf8(meta_plaintext)
+        .map_err(|_| BackupError::InvalidFormat("metadata is not valid UTF-8".into()))?;
+
+    Ok((Zeroizing::new(seed), Some(meta_json)))
 }
 
 /// Read the cleartext public key from a backup file without decrypting.
@@ -138,6 +216,7 @@ pub fn read_backup_pubkey(data: &[u8]) -> Result<[u8; 32], BackupError> {
 // ---------------------------------------------------------------------------
 
 struct ParsedBackup<'a> {
+    version: u8,
     pubkey: [u8; 32],
     memory_kib: u32,
     time_cost: u32,
@@ -148,20 +227,21 @@ struct ParsedBackup<'a> {
 }
 
 fn parse_header(data: &[u8]) -> Result<ParsedBackup<'_>, BackupError> {
-    if data.len() < EXPECTED_FILE_SIZE {
+    if data.len() < KEY_SECTION_SIZE {
         return Err(BackupError::InvalidFormat(format!(
-            "expected {} bytes, got {}",
-            EXPECTED_FILE_SIZE,
+            "expected at least {} bytes, got {}",
+            KEY_SECTION_SIZE,
             data.len()
         )));
     }
     if &data[0..4] != MAGIC {
         return Err(BackupError::InvalidFormat("bad magic bytes".into()));
     }
-    if data[4] != FORMAT_VERSION {
+    let version = data[4];
+    if version != FORMAT_VERSION_V1 && version != FORMAT_VERSION_V2 {
         return Err(BackupError::InvalidFormat(format!(
             "unsupported version {}",
-            data[4]
+            version
         )));
     }
 
@@ -178,9 +258,10 @@ fn parse_header(data: &[u8]) -> Result<ParsedBackup<'_>, BackupError> {
     let mut nonce = [0u8; NONCE_LEN];
     nonce.copy_from_slice(&data[65..89]);
 
-    let ciphertext = &data[89..EXPECTED_FILE_SIZE];
+    let ciphertext = &data[89..KEY_SECTION_SIZE];
 
     Ok(ParsedBackup {
+        version,
         pubkey,
         memory_kib,
         time_cost,
@@ -191,7 +272,10 @@ fn parse_header(data: &[u8]) -> Result<ParsedBackup<'_>, BackupError> {
     })
 }
 
-fn derive_key(passphrase: &str, salt: &[u8; SALT_LEN]) -> Result<Zeroizing<[u8; 32]>, BackupError> {
+fn derive_key(
+    passphrase: &str,
+    salt: &[u8; SALT_LEN],
+) -> Result<Zeroizing<[u8; 32]>, BackupError> {
     derive_key_with_params(
         passphrase,
         salt,
@@ -223,14 +307,8 @@ fn derive_key_with_params(
 mod tests {
     use super::*;
 
-    // Use fast KDF params in tests to avoid slow CI. We test the real
-    // params via the `argon2id_params_in_file` test that checks the header.
     fn test_encrypt(seed: &[u8; 32], passphrase: &str) -> Vec<u8> {
-        // Encrypt normally then verify the header params match defaults.
-        // For speed, we'll just use the real function — the default params
-        // are used in the file format. Tests that call decrypt_key will
-        // read those params from the file header and use them.
-        encrypt_key(seed, passphrase).unwrap()
+        encrypt_key(seed, passphrase, None).unwrap()
     }
 
     #[test]
@@ -238,8 +316,20 @@ mod tests {
         let seed = [42u8; 32];
         let passphrase = "test-passphrase-long-enough";
         let backup = test_encrypt(&seed, passphrase);
-        let recovered = decrypt_key(&backup, passphrase).unwrap();
+        let (recovered, meta) = decrypt_key(&backup, passphrase).unwrap();
         assert_eq!(*recovered, seed);
+        assert!(meta.is_none());
+    }
+
+    #[test]
+    fn roundtrip_with_metadata() {
+        let seed = [42u8; 32];
+        let passphrase = "test-passphrase-long-enough";
+        let meta_in = r#"{"version":1,"servers":{},"theme":"mocha"}"#;
+        let backup = encrypt_key(&seed, passphrase, Some(meta_in)).unwrap();
+        let (recovered, meta_out) = decrypt_key(&backup, passphrase).unwrap();
+        assert_eq!(*recovered, seed);
+        assert_eq!(meta_out.as_deref(), Some(meta_in));
     }
 
     #[test]
@@ -263,7 +353,6 @@ mod tests {
         let seed = [42u8; 32];
         let passphrase = "test-passphrase-long-enough";
         let mut backup = test_encrypt(&seed, passphrase);
-        // Flip a bit in the ciphertext region.
         backup[100] ^= 0xFF;
         let result = decrypt_key(&backup, passphrase);
         assert!(matches!(result, Err(BackupError::DecryptionFailed)));
@@ -281,10 +370,10 @@ mod tests {
     }
 
     #[test]
-    fn format_version_is_one() {
+    fn format_version_is_two() {
         let seed = [42u8; 32];
         let backup = test_encrypt(&seed, "test-passphrase-long-enough");
-        assert_eq!(backup[4], 1);
+        assert_eq!(backup[4], FORMAT_VERSION_V2);
     }
 
     #[test]
@@ -300,17 +389,51 @@ mod tests {
     }
 
     #[test]
-    fn file_size_is_correct() {
+    fn v2_no_metadata_min_size() {
         let seed = [42u8; 32];
         let backup = test_encrypt(&seed, "test-passphrase-long-enough");
-        assert_eq!(backup.len(), EXPECTED_FILE_SIZE);
+        assert_eq!(backup.len(), V2_MIN_SIZE);
+    }
+
+    #[test]
+    fn v2_with_metadata_size() {
+        let seed = [42u8; 32];
+        let meta = r#"{"version":1}"#;
+        let backup = encrypt_key(&seed, "test-passphrase-long-enough", Some(meta)).unwrap();
+        // V2_MIN_SIZE + NONCE_LEN + plaintext_len + 16-byte poly1305 tag
+        let expected = V2_MIN_SIZE + NONCE_LEN + meta.len() + 16;
+        assert_eq!(backup.len(), expected);
     }
 
     #[test]
     fn bad_magic_bytes_rejected() {
-        let mut data = vec![0u8; EXPECTED_FILE_SIZE];
+        let mut data = vec![0u8; KEY_SECTION_SIZE];
         data[0..4].copy_from_slice(b"NOPE");
         let result = decrypt_key(&data, "anything");
         assert!(matches!(result, Err(BackupError::InvalidFormat(_))));
+    }
+
+    #[test]
+    fn v1_file_decrypts_without_metadata() {
+        // Construct a minimal v1-format file manually and verify it decrypts.
+        let seed = [42u8; 32];
+        let passphrase = "test-passphrase-long-enough";
+        // Encrypt as v2 (no metadata), then patch byte 4 to version 1.
+        let mut backup = test_encrypt(&seed, passphrase);
+        backup[4] = FORMAT_VERSION_V1;
+        // Trim to exactly KEY_SECTION_SIZE to simulate a real v1 file.
+        backup.truncate(KEY_SECTION_SIZE);
+        let (recovered, meta) = decrypt_key(&backup, passphrase).unwrap();
+        assert_eq!(*recovered, seed);
+        assert!(meta.is_none());
+    }
+
+    #[test]
+    fn wrong_metadata_passphrase_fails() {
+        let seed = [42u8; 32];
+        let meta = r#"{"version":1}"#;
+        let backup = encrypt_key(&seed, "correct-passphrase!!", Some(meta)).unwrap();
+        let result = decrypt_key(&backup, "wrong-passphrase!!!");
+        assert!(matches!(result, Err(BackupError::DecryptionFailed)));
     }
 }
