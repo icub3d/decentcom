@@ -11,6 +11,7 @@ import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
 import { useMembersStore } from "./members";
 import { joinServer } from "../api/members";
+import { useThreadStore } from "./threadStore";
 
 export interface Channel {
   id: string;
@@ -596,7 +597,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           return {};
       }
     });
-    // Also delegate to thread store
-    import("./threadStore").then((m) => m.useThreadStore.getState().handleGatewayEvent(event));
+    // Also delegate to thread store (synchronous to avoid microtask delay).
+    useThreadStore.getState().handleGatewayEvent(event);
   },
 }));

@@ -29,5 +29,5 @@ CREATE INDEX idx_channel_overrides_channel ON channel_permission_overrides(chann
 
 INSERT INTO roles (id, name, permissions, position, is_builtin)
 VALUES
-    ('everyone', '@everyone', 515, 0, 1),
+    ('everyone', '@everyone', 1539, 0, 1),
     ('admin', '@admin', 16383, 1000, 1);
