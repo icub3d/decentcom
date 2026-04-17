@@ -1,15 +1,15 @@
+import { useEffect } from "react";
 import type { Message } from "../../stores/serverStore";
 import { useMembersStore } from "../../stores/members";
 import { useServerStore } from "../../stores/serverStore";
 import { useThreadStore } from "../../stores/threadStore";
-import { createThread } from "../../api/threads";
 import { Avatar } from "../profile/Avatar";
 import { MessageAttachment } from "./MessageAttachment";
 import { ReactionBar } from "./ReactionBar";
-import { ThreadIndicator } from "./ThreadIndicator";
 
 interface MessageItemProps {
   message: Message;
+  isReply?: boolean;
 }
 
 function formatTime(timestamp: string): string {
@@ -26,78 +26,88 @@ function truncatePubkey(pubkey: string): string {
   return `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`;
 }
 
-export function MessageItem({ message }: MessageItemProps) {
+export function MessageItem({ message, isReply }: MessageItemProps) {
   const member = useMembersStore((s) =>
     s.members.find((m) => m.user_id === message.author_id),
   );
-  const { address, sessionToken } = useServerStore();
-  const setActiveThread = useThreadStore((s) => s.setActiveThread);
+  const setReplyingTo = useServerStore((s) => s.setReplyingTo);
+  const { threadsMessages, fetchThreadMessages, isLoading } = useThreadStore();
+  
+  const threadId = message.thread?.thread_id;
+  const replies = threadId ? threadsMessages[threadId] ?? [] : [];
+
+  useEffect(() => {
+    if (threadId && message.thread && message.thread.reply_count > 0) {
+      void fetchThreadMessages(threadId);
+    }
+  }, [threadId, message.thread, fetchThreadMessages]);
 
   const displayName = member?.display_name ?? (member ? truncatePubkey(member.pubkey) : message.author_id);
   const pubkey = member?.pubkey ?? message.author_id;
 
-  async function handleReplyInThread() {
-    if (!address || !sessionToken) return;
-    if (message.thread) {
-      await setActiveThread(message.thread.thread_id);
-    } else {
-      try {
-        const resp = await createThread(address, sessionToken, message.channel_id, message.id);
-        await setActiveThread(resp.thread_id);
-      } catch (error) {
-        console.error("Failed to create thread:", error);
-      }
-    }
-  }
-
   return (
-    <article className="group relative flex gap-3 rounded-lg border border-ctp-overlay0 bg-ctp-mantle/60 px-4 py-3">
-      <div className="mt-0.5 flex-shrink-0">
-        <Avatar pubkey={pubkey} avatarHash={member?.avatar_hash} size={32} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-ctp-subtext0">
-            <span className="font-semibold text-ctp-subtext1">{displayName}</span>
-            <time>{formatTime(message.created_at)}</time>
-            {message.edited_at && !message.deleted && <span className="text-ctp-yellow">(edited)</span>}
+    <div className={`flex flex-col gap-1 ${isReply ? "ml-8" : ""}`}>
+      <article className={`group relative flex gap-3 rounded-lg border border-ctp-overlay0 bg-ctp-mantle/60 px-4 py-3 ${isReply ? "scale-95 origin-left" : ""}`}>
+        <div className="mt-0.5 flex-shrink-0">
+          <Avatar pubkey={pubkey} avatarHash={member?.avatar_hash} size={isReply ? 24 : 32} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-ctp-subtext0">
+              <span className="font-semibold text-ctp-subtext1">{displayName}</span>
+              <time>{formatTime(message.created_at)}</time>
+              {message.edited_at && !message.deleted && <span className="text-ctp-yellow">(edited)</span>}
+            </div>
           </div>
           
-          {!message.deleted && (
-            <button
-              onClick={() => void handleReplyInThread()}
-              className="hidden group-hover:block text-[10px] font-bold text-ctp-subtext0 hover:text-ctp-blue transition-colors uppercase tracking-tight"
-            >
-              Reply in Thread
-            </button>
+          {message.deleted ? (
+            <p className="italic text-ctp-overlay1">This message was deleted.</p>
+          ) : (
+            <>
+              {message.content && (
+                <p className="whitespace-pre-wrap text-ctp-text">{message.content}</p>
+              )}
+              {message.attachments?.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {message.attachments.map((a) => (
+                    <MessageAttachment key={a.id} attachment={a} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          
+          <div className="mt-1.5 flex items-center justify-between gap-1">
+            <ReactionBar
+              channelId={message.channel_id}
+              messageId={message.id}
+              reactions={message.reactions ?? []}
+            />
+
+            {!message.deleted && !isReply && (
+              <button
+                onClick={() => setReplyingTo(message)}
+                title="Reply"
+                className="hidden group-hover:flex h-6 w-6 items-center justify-center rounded-md text-ctp-subtext0 hover:bg-ctp-surface0 hover:text-ctp-blue transition-all"
+              >
+                <span className="text-xl leading-[0] mb-1">↵</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </article>
+
+      {/* Inline Replies */}
+      {replies.length > 0 && (
+        <div className="mt-1 flex flex-col gap-1 border-l-2 border-ctp-surface1 ml-4 pl-4">
+          {replies.map((r) => (
+            <MessageItem key={r.id} message={r} isReply />
+          ))}
+          {threadId && isLoading[threadId] && (
+            <div className="text-[10px] text-ctp-subtext0 animate-pulse ml-8">Loading replies...</div>
           )}
         </div>
-        
-        {message.deleted ? (
-          <p className="italic text-ctp-overlay1">This message was deleted.</p>
-        ) : (
-          <>
-            {message.content && (
-              <p className="whitespace-pre-wrap text-ctp-text">{message.content}</p>
-            )}
-            {message.attachments?.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {message.attachments.map((a) => (
-                  <MessageAttachment key={a.id} attachment={a} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-        
-        <ReactionBar
-          channelId={message.channel_id}
-          messageId={message.id}
-          reactions={message.reactions ?? []}
-        />
-
-        {message.thread && <ThreadIndicator summary={message.thread} />}
-      </div>
-    </article>
+      )}
+    </div>
   );
 }

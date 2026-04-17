@@ -91,6 +91,7 @@ export interface ServerStore {
   currentChannelId: string | null;
   messages: Record<string, Message[]>;
   hasMore: Record<string, boolean>;
+  replyingTo: Message | null;
   error: string | null;
   gateway: GatewayClient | null;
 
@@ -98,6 +99,7 @@ export interface ServerStore {
   disconnect: () => void;
   revalidate: () => Promise<void>;
   setCurrentChannel: (id: string) => Promise<void>;
+  setReplyingTo: (message: Message | null) => void;
   sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
   loadMoreMessages: (channelId: string) => Promise<void>;
   createChannel: (req: CreateChannelRequest) => Promise<void>;
@@ -147,6 +149,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   currentChannelId: null,
   messages: {},
   hasMore: {},
+  replyingTo: null,
   error: null,
   gateway: null,
 
@@ -269,13 +272,15 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       gateway?.unsubscribe(currentChannelId);
     }
 
-    set({ currentChannelId: id });
+    set({ currentChannelId: id, replyingTo: null });
     gateway?.subscribe(id);
 
     if (!get().messages[id]) {
       await get().loadMoreMessages(id);
     }
   },
+
+  setReplyingTo: (message) => set({ replyingTo: message }),
 
   sendMessage: async (content: string, attachmentIds?: string[]) => {
     const state = get();

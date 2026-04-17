@@ -9,11 +9,16 @@ import {
 import type { Attachment } from "../../api/media";
 import { uploadFile } from "../../api/media";
 import { useServerStore } from "../../stores/serverStore";
+import { useThreadStore } from "../../stores/threadStore";
+import { useMembersStore } from "../../stores/members";
+import { createThread } from "../../api/threads";
 import { EmojiPicker } from "../emoji/EmojiPicker";
 
 interface MessageInputProps {
   disabled: boolean;
   onSend: (content: string, attachmentIds?: string[]) => Promise<void>;
+  placeholder?: string;
+  autoFocus?: boolean;
 }
 
 interface PendingFile {
@@ -26,12 +31,13 @@ interface PendingFile {
 
 let nextPendingId = 0;
 
-export function MessageInput({ disabled, onSend }: MessageInputProps) {
+export function MessageInput({ disabled, onSend, placeholder, autoFocus }: MessageInputProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +45,13 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
   const address = useServerStore((s) => s.address);
   const sessionToken = useServerStore((s) => s.sessionToken);
   const currentChannelId = useServerStore((s) => s.currentChannelId);
+  const replyingTo = useServerStore((s) => s.replyingTo);
+  const setReplyingTo = useServerStore((s) => s.setReplyingTo);
+  const sendThreadMessage = useThreadStore((s) => s.sendMessage);
+
+  const targetMember = useMembersStore((s) => 
+    replyingTo ? s.members.find(m => m.user_id === replyingTo.author_id) : null
+  );
 
   const uploadFiles = useCallback(
     (files: File[]) => {
@@ -85,15 +98,33 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
     setSending(true);
     try {
       const attachmentIds = readyAttachments.map((p) => p.attachment!.id);
-      await onSend(value.trim(), attachmentIds.length > 0 ? attachmentIds : undefined);
+      
+      if (replyingTo) {
+        let threadId = replyingTo.thread?.thread_id;
+        if (!threadId) {
+          const resp = await createThread(address, sessionToken!, replyingTo.channel_id, replyingTo.id);
+          threadId = resp.thread_id;
+        }
+        await sendThreadMessage(threadId, value.trim(), attachmentIds.length > 0 ? attachmentIds : undefined);
+        setReplyingTo(null);
+      } else {
+        await onSend(value.trim(), attachmentIds.length > 0 ? attachmentIds : undefined);
+      }
+      
       setValue("");
       setPendingFiles([]);
+    } catch (error) {
+      console.error("Failed to send message:", error);
     } finally {
       setSending(false);
     }
   }
 
   async function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Escape" && replyingTo) {
+      setReplyingTo(null);
+      return;
+    }
     if (event.key !== "Enter") return;
     if (event.shiftKey) return;
     event.preventDefault();
@@ -181,97 +212,126 @@ export function MessageInput({ disabled, onSend }: MessageInputProps) {
         </div>
       )}
 
-      <div className={`relative ${dragOver ? "ring-2 ring-ctp-blue rounded-lg" : ""}`}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={disabled || sending}
-          rows={2}
-          placeholder={disabled ? "Connect and select a channel to send" : "Send a message"}
-          className="w-full resize-none rounded-lg border border-ctp-overlay0 bg-ctp-base pl-10 pr-24 py-2 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-blue disabled:opacity-60"
-        />
-        {/* Attach file button (left side) */}
-        <div className="absolute left-2 top-1/2 -translate-y-1/2">
-          {!disabled && (
+      <div className={`relative flex flex-col overflow-hidden rounded-lg border transition-all ${
+        isFocused ? "border-ctp-blue ring-2 ring-ctp-blue" : "border-ctp-overlay0"
+      } ${dragOver ? "ring-2 ring-ctp-blue" : ""}`}>
+        
+        {/* Replying to banner (Integrated) */}
+        {replyingTo && (
+          <div className="flex items-center justify-between gap-2 bg-ctp-surface0/80 border-b border-ctp-overlay0/40 px-3 py-1.5 text-xs">
+            <div className="flex items-center gap-1.5 truncate text-ctp-subtext0">
+              <span>Replying to</span>
+              <span className="font-bold text-ctp-blue">
+                {targetMember?.display_name ?? replyingTo.author_id}
+              </span>
+              <span className="truncate italic opacity-70">
+                {replyingTo.content.slice(0, 60)}{replyingTo.content.length > 60 ? "..." : ""}
+              </span>
+            </div>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled || sending}
-              aria-label="Attach file"
-              className="rounded-lg p-1 text-ctp-subtext0 transition hover:bg-ctp-surface0 hover:text-ctp-text disabled:opacity-60"
+              onClick={() => setReplyingTo(null)}
+              className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-ctp-surface1 text-ctp-subtext1 transition-colors"
+              aria-label="Cancel reply"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
+              ×
             </button>
-          )}
-        </div>
-        {/* Right side controls */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {!disabled && (
-            <button
-              ref={emojiButtonRef}
-              onClick={() => setEmojiOpen((v) => !v)}
-              disabled={disabled || sending}
-              aria-label="Emoji picker"
-              className="rounded-lg px-2 py-1 text-lg transition hover:bg-ctp-surface0 disabled:opacity-60"
-            >
-              😊
-            </button>
-          )}
-          {emojiOpen && (
-            <EmojiPicker
-              anchorRef={emojiButtonRef}
-              onSelect={insertAtCursor}
-              onClose={() => setEmojiOpen(false)}
-            />
-          )}
-          <button
-            onClick={submit}
-            disabled={disabled || sending || !canSend}
-            className="rounded-lg bg-ctp-blue p-2 text-ctp-crust transition hover:bg-ctp-sapphire disabled:opacity-60"
-            aria-label="Send message"
-          >
-            {sending ? (
-              <span className="animate-pulse">...</span>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          </div>
+        )}
+
+        <div className="relative bg-ctp-base">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            disabled={disabled || sending}
+            autoFocus={autoFocus}
+            rows={2}
+            placeholder={placeholder ?? (disabled ? "Connect and select a channel to send" : "Send a message")}
+            className="w-full resize-none bg-transparent pl-10 pr-24 py-2 text-ctp-text focus:outline-none disabled:opacity-60"
+          />
+          {/* Attach file button (left side) */}
+          <div className="absolute left-2 top-1/2 -translate-y-1/2">
+            {!disabled && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || sending}
+                aria-label="Attach file"
+                className="rounded-lg p-1 text-ctp-subtext0 transition hover:bg-ctp-surface0 hover:text-ctp-text disabled:opacity-60"
               >
-                <line x1="12" y1="19" x2="12" y2="5"></line>
-                <polyline points="5 12 12 5 19 12"></polyline>
-              </svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
             )}
-          </button>
+          </div>
+          {/* Right side controls */}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {!disabled && (
+              <button
+                ref={emojiButtonRef}
+                onClick={() => setEmojiOpen((v) => !v)}
+                disabled={disabled || sending}
+                aria-label="Emoji picker"
+                className="rounded-lg px-2 py-1 text-lg transition hover:bg-ctp-surface0 disabled:opacity-60"
+              >
+                😊
+              </button>
+            )}
+            {emojiOpen && (
+              <EmojiPicker
+                anchorRef={emojiButtonRef}
+                onSelect={insertAtCursor}
+                onClose={() => setEmojiOpen(false)}
+              />
+            )}
+            <button
+              onClick={submit}
+              disabled={disabled || sending || !canSend}
+              className="rounded-lg bg-ctp-blue p-2 text-ctp-crust transition hover:bg-ctp-sapphire disabled:opacity-60"
+              aria-label="Send message"
+            >
+              {sending ? (
+                <span className="animate-pulse">...</span>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

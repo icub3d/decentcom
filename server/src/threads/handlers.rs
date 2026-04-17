@@ -182,7 +182,13 @@ pub(super) async fn list_thread_messages(
         items.truncate(limit as usize);
     }
 
-    let messages = items.into_iter().map(|m| MessageResponse::from_message(m, Vec::new(), Vec::new(), None)).collect();
+    let mut messages = Vec::with_capacity(items.len());
+    for item in items {
+        let enriched = crate::messages::enrich_message(&state, item, &auth.user_id)
+            .await
+            .map_err(|(s, Json(e))| (s, Json(ErrorBody { error: e.error })))?;
+        messages.push(enriched);
+    }
 
     Ok(Json(MessagePage { messages, has_more }))
 }
@@ -216,7 +222,9 @@ pub(super) async fn create_thread_message(
     // Auto-follow
     state.storage.add_thread_follower(&thread_id, &auth.user_id).await.map_err(internal)?;
 
-    let response = MessageResponse::from_message(message.clone(), Vec::new(), Vec::new(), None);
+    let response = crate::messages::enrich_message(&state, message.clone(), &auth.user_id)
+        .await
+        .map_err(|(s, Json(e))| (s, Json(ErrorBody { error: e.error })))?;
 
     #[derive(Serialize)]
     struct ThreadMessageEvent {

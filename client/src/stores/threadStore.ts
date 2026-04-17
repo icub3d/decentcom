@@ -1,148 +1,157 @@
 import { create } from "zustand";
 import type { Message, Thread } from "../api/threads";
-import { getThread, listThreadMessages, createThreadMessage, followThread, unfollowThread, markThreadRead } from "../api/threads";
-import { useServerStore, type GatewayEvent } from "./serverStore";
+import { getThread, listThreadMessages, createThreadMessage, markThreadRead } from "../api/threads";
+import { useServerStore, type GatewayEvent, type ReactionEvent } from "./serverStore";
 
 interface ThreadState {
-  activeThreadId: string | null;
-  activeThread: Thread | null;
-  messages: Message[];
-  hasMore: boolean;
-  isLoading: boolean;
+  // messages by threadId
+  threadsMessages: Record<string, Message[]>;
+  threads: Record<string, Thread>;
+  isLoading: Record<string, boolean>;
+  hasMore: Record<string, boolean>;
   unreadCounts: Record<string, number>;
 
-  setActiveThread: (threadId: string | null) => Promise<void>;
-  loadMoreMessages: () => Promise<void>;
-  sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
-  toggleFollow: () => Promise<void>;
+  fetchThreadMessages: (threadId: string) => Promise<void>;
+  sendMessage: (threadId: string, content: string, attachmentIds?: string[]) => Promise<void>;
   handleGatewayEvent: (event: GatewayEvent) => void;
   markAsRead: (threadId: string) => void;
 }
 
 export const useThreadStore = create<ThreadState>((set, get) => ({
-  activeThreadId: null,
-  activeThread: null,
-  messages: [],
-  hasMore: false,
-  isLoading: false,
+  threadsMessages: {},
+  threads: {},
+  isLoading: {},
+  hasMore: {},
   unreadCounts: {},
 
-  setActiveThread: async (threadId) => {
-    if (get().activeThreadId === threadId) return;
-
-    if (!threadId) {
-      set({ activeThreadId: null, activeThread: null, messages: [], hasMore: false });
-      return;
-    }
+  fetchThreadMessages: async (threadId) => {
+    if (get().threadsMessages[threadId] && !get().unreadCounts[threadId]) return;
 
     const { address, sessionToken } = useServerStore.getState();
     if (!address || !sessionToken) return;
 
-    set({ activeThreadId: threadId, isLoading: true, messages: [] });
+    set((s) => ({ isLoading: { ...s.isLoading, [threadId]: true } }));
 
     try {
       const [thread, page] = await Promise.all([
         getThread(address, sessionToken, threadId),
-        listThreadMessages(address, sessionToken, threadId, undefined, undefined, 50)
+        listThreadMessages(address, sessionToken, threadId, undefined, undefined, 50),
       ]);
 
-      set({
-        activeThread: thread,
-        messages: page.messages,
-        hasMore: page.has_more,
-        isLoading: false
-      });
-      
+      set((s) => ({
+        threads: { ...s.threads, [threadId]: thread },
+        threadsMessages: { ...s.threadsMessages, [threadId]: page.messages },
+        hasMore: { ...s.hasMore, [threadId]: page.has_more },
+        isLoading: { ...s.isLoading, [threadId]: false },
+      }));
+
       get().markAsRead(threadId);
     } catch (error) {
       console.error("Failed to load thread:", error);
-      set({ isLoading: false });
+      set((s) => ({ isLoading: { ...s.isLoading, [threadId]: false } }));
     }
   },
 
-  loadMoreMessages: async () => {
-    const { activeThreadId, messages, hasMore, isLoading } = get();
-    if (!activeThreadId || !hasMore || isLoading) return;
-
+  sendMessage: async (threadId, content, attachmentIds) => {
     const { address, sessionToken } = useServerStore.getState();
     if (!address || !sessionToken) return;
 
-    const oldestId = messages[0]?.id;
-    
-    set({ isLoading: true });
-    try {
-      const page = await listThreadMessages(address, sessionToken, activeThreadId, oldestId, undefined, 50);
-      set((state) => ({
-        messages: [...page.messages, ...state.messages],
-        hasMore: page.has_more,
-        isLoading: false
-      }));
-    } catch (error) {
-      console.error("Failed to load more thread messages:", error);
-      set({ isLoading: false });
-    }
-  },
-
-  sendMessage: async (content, attachmentIds) => {
-    const { activeThreadId } = get();
-    const { address, sessionToken } = useServerStore.getState();
-    if (!activeThreadId || !address || !sessionToken) return;
-
-    await createThreadMessage(address, sessionToken, activeThreadId, content, attachmentIds);
-  },
-
-  toggleFollow: async () => {
-    const { activeThread, activeThreadId } = get();
-    const { address, sessionToken } = useServerStore.getState();
-    if (!activeThread || !activeThreadId || !address || !sessionToken) return;
-
-    if (activeThread.is_following) {
-      await unfollowThread(address, sessionToken, activeThreadId);
-      set({ activeThread: { ...activeThread, is_following: false } });
-    } else {
-      await followThread(address, sessionToken, activeThreadId);
-      set({ activeThread: { ...activeThread, is_following: true } });
-    }
+    await createThreadMessage(address, sessionToken, threadId, content, attachmentIds);
   },
 
   handleGatewayEvent: (event) => {
-    const { activeThreadId, activeThread } = get();
+    const { sessionUserId } = useServerStore.getState();
+    set((state) => {
+      switch (event.op) {
+        case "THREAD_MESSAGE_CREATE": {
+          const { thread_id, message } = event.d as { thread_id: string; message: Message };
+          const existing = state.threadsMessages[thread_id] ?? [];
+          if (existing.some((m) => m.id === message.id)) return {};
+          
+          return {
+            threadsMessages: {
+              ...state.threadsMessages,
+              [thread_id]: [...existing, message],
+            },
+          };
+        }
+        case "THREAD_UPDATE": {
+          const { thread_id, reply_count, last_reply_at } = event.d as {
+            thread_id: string;
+            reply_count: number;
+            last_reply_at: string | null;
+          };
+          if (state.threads[thread_id]) {
+            return {
+              threads: {
+                ...state.threads,
+                [thread_id]: {
+                  ...state.threads[thread_id],
+                  reply_count,
+                  last_reply_at,
+                },
+              },
+            };
+          }
+          return {};
+        }
+        case "REACTION_ADD": {
+          const ev = event.d as ReactionEvent;
+          const nextThreadsMessages = { ...state.threadsMessages };
+          let changed = false;
 
-    switch (event.op) {
-      case "THREAD_MESSAGE_CREATE": {
-        const { thread_id, message } = event.d as { thread_id: string; message: Message };
-        if (activeThreadId === thread_id) {
-          set((state) => ({
-            messages: [...state.messages, message]
-          }));
-        } else {
-          set((state) => ({
-            unreadCounts: {
-              ...state.unreadCounts,
-              [thread_id]: (state.unreadCounts[thread_id] ?? 0) + 1
+          for (const [threadId, messages] of Object.entries(nextThreadsMessages)) {
+            const updated = messages.map((m) => {
+              if (m.id !== ev.message_id) return m;
+              changed = true;
+              const reactions = m.reactions.filter((r) => r.emoji !== ev.emoji);
+              const prev = m.reactions.find((r) => r.emoji === ev.emoji);
+              reactions.push({
+                emoji: ev.emoji,
+                count: (prev?.count ?? 0) + 1,
+                me: ev.user_id === sessionUserId ? true : (prev?.me ?? false),
+              });
+              return { ...m, reactions };
+            });
+            if (changed) {
+              nextThreadsMessages[threadId] = updated;
+              break; // Optimization: message IDs are unique
             }
-          }));
+          }
+          return changed ? { threadsMessages: nextThreadsMessages } : {};
         }
-        break;
-      }
-      case "THREAD_UPDATE": {
-        const { thread_id, reply_count, last_reply_at } = event.d as {
-          thread_id: string;
-          reply_count: number;
-          last_reply_at: string | null;
-        };
-        if (activeThreadId === thread_id && activeThread) {
-          set({
-            activeThread: {
-              ...activeThread,
-              reply_count,
-              last_reply_at
+        case "REACTION_REMOVE": {
+          const ev = event.d as ReactionEvent;
+          const nextThreadsMessages = { ...state.threadsMessages };
+          let changed = false;
+
+          for (const [threadId, messages] of Object.entries(nextThreadsMessages)) {
+            const updated = messages.map((m) => {
+              if (m.id !== ev.message_id) return m;
+              changed = true;
+              const reactions = m.reactions
+                .map((r) => {
+                  if (r.emoji !== ev.emoji) return r;
+                  return {
+                    ...r,
+                    count: r.count - 1,
+                    me: ev.user_id === sessionUserId ? false : r.me,
+                  };
+                })
+                .filter((r) => r.count > 0);
+              return { ...m, reactions };
+            });
+            if (changed) {
+              nextThreadsMessages[threadId] = updated;
+              break;
             }
-          });
+          }
+          return changed ? { threadsMessages: nextThreadsMessages } : {};
         }
-        break;
+        default:
+          return {};
       }
-    }
+    });
   },
 
   markAsRead: (threadId) => {
@@ -156,5 +165,5 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     if (address && sessionToken) {
       void markThreadRead(address, sessionToken, threadId);
     }
-  }
+  },
 }));

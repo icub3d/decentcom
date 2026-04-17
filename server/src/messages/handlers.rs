@@ -17,8 +17,8 @@ use crate::permissions::{
 use crate::AppState;
 
 #[derive(Debug, Serialize)]
-pub(super) struct ErrorBody {
-    error: String,
+pub(crate) struct ErrorBody {
+    pub(crate) error: String,
 }
 
 type ApiResult<T> = Result<Json<T>, (StatusCode, Json<ErrorBody>)>;
@@ -87,7 +87,7 @@ fn validate_message_content(content: &str, max_len: usize) -> Result<(), (Status
     Ok(())
 }
 
-async fn enrich_message(
+pub(crate) async fn enrich_message(
     state: &AppState,
     message: crate::storage::models::Message,
     viewer_id: &str,
@@ -166,20 +166,15 @@ pub(super) async fn create_message(
         .await
         .map_err(storage_err)?;
 
-    let attachments = if has_attachments {
+    if has_attachments {
         state
             .storage
             .associate_attachments(&req.attachment_ids, &message.id, &auth.user_id)
             .await
-            .map_err(storage_err)?
-            .into_iter()
-            .map(AttachmentResponse::from)
-            .collect()
-    } else {
-        Vec::new()
-    };
+            .map_err(storage_err)?;
+    }
 
-    let response = MessageResponse::from_message(message, attachments, Vec::new(), None);
+    let response = enrich_message(&state, message, &auth.user_id).await?;
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);

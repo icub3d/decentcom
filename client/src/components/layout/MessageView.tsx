@@ -1,8 +1,6 @@
 import { SEND_MESSAGES, usePermissions } from "../../hooks/usePermissions";
 import type { Channel, Message } from "../../stores/serverStore";
-import { useThreadStore } from "../../stores/threadStore";
 import { MessageList } from "../messages/MessageList";
-import { ThreadPanel } from "../messages/ThreadPanel";
 import { MessageInput } from "./MessageInput";
 
 interface MessageViewProps {
@@ -27,7 +25,6 @@ export function MessageView({
   onToggleMemberPanel,
 }: MessageViewProps) {
   const permissions = usePermissions(channel?.id);
-  const activeThreadId = useThreadStore((s) => s.activeThreadId);
 
   if (!channel) {
     return (
@@ -61,8 +58,6 @@ export function MessageView({
         </div>
         <MessageInput disabled={!connected || !permissions.has(SEND_MESSAGES)} onSend={onSend} />
       </section>
-
-      {activeThreadId && <ThreadPanel />}
     </div>
   );
 }

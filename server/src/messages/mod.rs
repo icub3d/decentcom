@@ -1,6 +1,8 @@
 mod handlers;
 pub mod models;
 
+pub(crate) use handlers::enrich_message;
+
 use axum::routing::{get, post};
 use axum::Router;
 
