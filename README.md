@@ -1,6 +1,6 @@
 # decentcom
 
-Decentralized Communication — a self-hostable, open-source Discord alternative where users own their identity and servers own their data.
+Decentralized Communication — open-source, self-hostable community software where your identity is a cryptographic key pair you own and no central authority controls your server.
 
 "Decent" in the name is intentional: a decent (good) way to communicate, built on decentralized infrastructure.
 
