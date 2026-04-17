@@ -46,6 +46,33 @@ pub struct Message {
     pub edited_at: Option<DateTime<Utc>>,
     pub deleted: bool,
     pub created_at: DateTime<Utc>,
+    pub thread_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Thread {
+    pub id: String,
+    pub channel_id: String,
+    pub parent_message_id: String,
+    pub creator_id: String,
+    pub created_at: DateTime<Utc>,
+    pub last_reply_at: Option<DateTime<Utc>>,
+    pub reply_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadFollower {
+    pub thread_id: String,
+    pub user_id: String,
+    pub last_read_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadSummary {
+    pub thread_id: String,
+    pub reply_count: i64,
+    pub last_reply_at: Option<DateTime<Utc>>,
+    pub last_reply_author_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

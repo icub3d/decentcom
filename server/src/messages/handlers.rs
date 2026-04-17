@@ -8,7 +8,7 @@ use crate::attachments::models::AttachmentResponse;
 use crate::gateway::events::event_json;
 use crate::messages::models::{
     CreateMessageRequest, ListMessagesQuery, MessagePage, MessageResponse, ReactionSummary,
-    UpdateMessageRequest,
+    UpdateMessageRequest, ThreadSummaryResponse,
 };
 use crate::permissions::{
     effective_permissions, has_permission, UserPermissions, MANAGE_MESSAGES, READ_MESSAGES,
@@ -17,8 +17,8 @@ use crate::permissions::{
 use crate::AppState;
 
 #[derive(Debug, Serialize)]
-pub(super) struct ErrorBody {
-    error: String,
+pub(crate) struct ErrorBody {
+    pub(crate) error: String,
 }
 
 type ApiResult<T> = Result<Json<T>, (StatusCode, Json<ErrorBody>)>;
@@ -87,7 +87,7 @@ fn validate_message_content(content: &str, max_len: usize) -> Result<(), (Status
     Ok(())
 }
 
-async fn enrich_message(
+pub(crate) async fn enrich_message(
     state: &AppState,
     message: crate::storage::models::Message,
     viewer_id: &str,
@@ -108,7 +108,13 @@ async fn enrich_message(
         .into_iter()
         .map(ReactionSummary::from)
         .collect();
-    Ok(MessageResponse::from_message(message, atts, reactions))
+    let thread = state
+        .storage
+        .get_thread_summary(&message.id)
+        .await
+        .map_err(internal)?
+        .map(ThreadSummaryResponse::from);
+    Ok(MessageResponse::from_message(message, atts, reactions, thread))
 }
 
 async fn ensure_channel_exists(
@@ -156,24 +162,19 @@ pub(super) async fn create_message(
 
     let message = state
         .storage
-        .create_message(&channel_id, &auth.user_id, content)
+        .create_message(&channel_id, &auth.user_id, content, None)
         .await
         .map_err(storage_err)?;
 
-    let attachments = if has_attachments {
+    if has_attachments {
         state
             .storage
             .associate_attachments(&req.attachment_ids, &message.id, &auth.user_id)
             .await
-            .map_err(storage_err)?
-            .into_iter()
-            .map(AttachmentResponse::from)
-            .collect()
-    } else {
-        Vec::new()
-    };
+            .map_err(storage_err)?;
+    }
 
-    let response = MessageResponse::from_message(message, attachments, Vec::new());
+    let response = enrich_message(&state, message, &auth.user_id).await?;
 
     if let Some(msg) = event_json(Op::MessageCreate, response.clone()) {
         state.gateway.broadcast_to_channel(&channel_id, &msg);

@@ -41,6 +41,25 @@ impl From<ReactionCount> for ReactionSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadSummaryResponse {
+    pub thread_id: String,
+    pub reply_count: i64,
+    pub last_reply_at: Option<DateTime<Utc>>,
+    pub last_reply_author_id: Option<String>,
+}
+
+impl From<crate::storage::models::ThreadSummary> for ThreadSummaryResponse {
+    fn from(s: crate::storage::models::ThreadSummary) -> Self {
+        Self {
+            thread_id: s.thread_id,
+            reply_count: s.reply_count,
+            last_reply_at: s.last_reply_at,
+            last_reply_author_id: s.last_reply_author_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageResponse {
     pub id: String,
     pub channel_id: String,
@@ -51,6 +70,7 @@ pub struct MessageResponse {
     pub deleted: bool,
     pub attachments: Vec<AttachmentResponse>,
     pub reactions: Vec<ReactionSummary>,
+    pub thread: Option<ThreadSummaryResponse>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,6 +84,7 @@ impl MessageResponse {
         m: crate::storage::models::Message,
         attachments: Vec<AttachmentResponse>,
         reactions: Vec<ReactionSummary>,
+        thread: Option<ThreadSummaryResponse>,
     ) -> Self {
         Self {
             id: m.id,
@@ -75,12 +96,13 @@ impl MessageResponse {
             deleted: m.deleted,
             attachments,
             reactions,
+            thread,
         }
     }
 }
 
 impl From<crate::storage::models::Message> for MessageResponse {
     fn from(m: crate::storage::models::Message) -> Self {
-        Self::from_message(m, Vec::new(), Vec::new())
+        Self::from_message(m, Vec::new(), Vec::new(), None)
     }
 }

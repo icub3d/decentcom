@@ -17,6 +17,7 @@ fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, StorageError>
         edited_at: row.try_get::<Option<DateTime<Utc>>, _>("edited_at")?,
         deleted: deleted_int != 0,
         created_at: row.try_get::<DateTime<Utc>, _>("created_at")?,
+        thread_id: row.try_get("thread_id")?,
     })
 }
 
@@ -27,17 +28,30 @@ impl MessageStore for SqliteStorage {
         channel_id: &str,
         author_id: &str,
         content: &str,
+        thread_id: Option<&str>,
     ) -> Result<Message, StorageError> {
         let id = self.new_id();
         sqlx::query(
-            "INSERT INTO messages (id, channel_id, author_id, content) VALUES (?, ?, ?, ?)",
+            "INSERT INTO messages (id, channel_id, author_id, content, thread_id) VALUES (?, ?, ?, ?, ?)",
         )
         .bind(&id)
         .bind(channel_id)
         .bind(author_id)
         .bind(content)
+        .bind(thread_id)
         .execute(self.pool())
         .await?;
+
+        if let Some(tid) = thread_id {
+            sqlx::query(
+                "UPDATE threads SET reply_count = reply_count + 1, last_reply_at = (SELECT created_at FROM messages WHERE id = ?) WHERE id = ?"
+            )
+            .bind(&id)
+            .bind(tid)
+            .execute(self.pool())
+            .await?;
+        }
+
         self.get_message(&id).await?.ok_or(StorageError::NotFound)
     }
 
@@ -60,7 +74,7 @@ impl MessageStore for SqliteStorage {
             Some(cursor) => {
                 sqlx::query(
                     "SELECT * FROM messages
-                     WHERE channel_id = ? AND id < ?
+                     WHERE channel_id = ? AND id < ? AND thread_id IS NULL
                      ORDER BY id DESC
                      LIMIT ?",
                 )
@@ -73,11 +87,53 @@ impl MessageStore for SqliteStorage {
             None => {
                 sqlx::query(
                     "SELECT * FROM messages
-                     WHERE channel_id = ?
+                     WHERE channel_id = ? AND thread_id IS NULL
                      ORDER BY id DESC
                      LIMIT ?",
                 )
                 .bind(channel_id)
+                .bind(limit)
+                .fetch_all(self.pool())
+                .await?
+            }
+        };
+        rows.into_iter().map(row_to_message).collect()
+    }
+
+    async fn list_thread_messages(
+        &self,
+        thread_id: &str,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<Vec<Message>, StorageError> {
+        let limit = limit.min(500) as i64;
+        let rows = match (before, after) {
+            (Some(b), _) => {
+                sqlx::query(
+                    "SELECT * FROM messages WHERE thread_id = ? AND id < ? ORDER BY id DESC LIMIT ?"
+                )
+                .bind(thread_id)
+                .bind(b)
+                .bind(limit)
+                .fetch_all(self.pool())
+                .await?
+            }
+            (None, Some(a)) => {
+                sqlx::query(
+                    "SELECT * FROM messages WHERE thread_id = ? AND id > ? ORDER BY id ASC LIMIT ?"
+                )
+                .bind(thread_id)
+                .bind(a)
+                .bind(limit)
+                .fetch_all(self.pool())
+                .await?
+            }
+            (None, None) => {
+                sqlx::query(
+                    "SELECT * FROM messages WHERE thread_id = ? ORDER BY id ASC LIMIT ?"
+                )
+                .bind(thread_id)
                 .bind(limit)
                 .fetch_all(self.pool())
                 .await?
@@ -135,7 +191,7 @@ mod tests {
     #[tokio::test]
     async fn create_and_get_message() {
         let (s, uid, cid) = setup().await;
-        let m = s.create_message(&cid, &uid, "hi").await.unwrap();
+        let m = s.create_message(&cid, &uid, "hi", None).await.unwrap();
         assert_eq!(m.content, "hi");
         assert!(!m.deleted);
 
@@ -152,7 +208,7 @@ mod tests {
         let mut ids = Vec::new();
         for i in 0..5 {
             let m = s
-                .create_message(&cid, &uid, &format!("msg {i}"))
+                .create_message(&cid, &uid, &format!("msg {i}"), None)
                 .await
                 .unwrap();
             ids.push(m.id);
@@ -174,7 +230,7 @@ mod tests {
     #[tokio::test]
     async fn soft_delete_hides_message() {
         let (s, uid, cid) = setup().await;
-        let m = s.create_message(&cid, &uid, "bye").await.unwrap();
+        let m = s.create_message(&cid, &uid, "bye", None).await.unwrap();
         s.delete_message(&m.id).await.unwrap();
         let got = s.get_message(&m.id).await.unwrap().unwrap();
         assert!(got.deleted);
@@ -188,7 +244,7 @@ mod tests {
     #[tokio::test]
     async fn edit_sets_edited_at() {
         let (s, uid, cid) = setup().await;
-        let m = s.create_message(&cid, &uid, "first").await.unwrap();
+        let m = s.create_message(&cid, &uid, "first", None).await.unwrap();
         assert!(m.edited_at.is_none());
 
         let updated = s.update_message(&m.id, "second").await.unwrap();

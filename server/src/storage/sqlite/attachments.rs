@@ -149,7 +149,7 @@ mod tests {
         let s = SqliteStorage::in_memory().await.unwrap();
         let user = s.create_user("pk1", None).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
-        let msg = s.create_message(&ch.id, &user.id, "hello").await.unwrap();
+        let msg = s.create_message(&ch.id, &user.id, "hello", None).await.unwrap();
 
         let att1 = s
             .create_attachment(CreateAttachmentParams {
@@ -192,7 +192,7 @@ mod tests {
         let user1 = s.create_user("pk1", None).await.unwrap();
         let user2 = s.create_user("pk2", None).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
-        let msg = s.create_message(&ch.id, &user2.id, "hi").await.unwrap();
+        let msg = s.create_message(&ch.id, &user2.id, "hi", None).await.unwrap();
 
         let att = s
             .create_attachment(CreateAttachmentParams {
@@ -219,8 +219,8 @@ mod tests {
         let s = SqliteStorage::in_memory().await.unwrap();
         let user = s.create_user("pk1", None).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
-        let msg1 = s.create_message(&ch.id, &user.id, "m1").await.unwrap();
-        let msg2 = s.create_message(&ch.id, &user.id, "m2").await.unwrap();
+        let msg1 = s.create_message(&ch.id, &user.id, "m1", None).await.unwrap();
+        let msg2 = s.create_message(&ch.id, &user.id, "m2", None).await.unwrap();
 
         let att = s
             .create_attachment(CreateAttachmentParams {

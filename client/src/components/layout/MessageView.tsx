@@ -35,27 +35,29 @@ export function MessageView({
   }
 
   return (
-    <section className="flex h-full flex-1 flex-col bg-ctp-base">
-      <header className="border-b border-ctp-overlay0 px-5 py-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-ctp-text">#{channel.name}</h2>
-        {onToggleMemberPanel && (
-          <button
-            onClick={onToggleMemberPanel}
-            title={memberPanelOpen ? "Hide members" : "Show members"}
-            className={`h-8 w-8 rounded-lg transition flex items-center justify-center text-sm ${
-              memberPanelOpen
-                ? "bg-ctp-blue text-ctp-crust"
-                : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
-            }`}
-          >
-            👥
-          </button>
-        )}
-      </header>
-      <div className="flex-1 min-h-0">
-        <MessageList messages={messages} hasMore={hasMore} onLoadMore={onLoadMore} />
-      </div>
-      <MessageInput disabled={!connected || !permissions.has(SEND_MESSAGES)} onSend={onSend} />
-    </section>
+    <div className="flex h-full flex-1 overflow-hidden">
+      <section className="flex h-full flex-1 flex-col bg-ctp-base min-w-0">
+        <header className="border-b border-ctp-overlay0 px-5 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-ctp-text">#{channel.name}</h2>
+          {onToggleMemberPanel && (
+            <button
+              onClick={onToggleMemberPanel}
+              title={memberPanelOpen ? "Hide members" : "Show members"}
+              className={`h-8 w-8 rounded-lg transition flex items-center justify-center text-sm ${
+                memberPanelOpen
+                  ? "bg-ctp-blue text-ctp-crust"
+                  : "bg-ctp-surface0 text-ctp-subtext1 hover:bg-ctp-surface1"
+              }`}
+            >
+              👥
+            </button>
+          )}
+        </header>
+        <div className="flex-1 min-h-0">
+          <MessageList messages={messages} hasMore={hasMore} onLoadMore={onLoadMore} />
+        </div>
+        <MessageInput disabled={!connected || !permissions.has(SEND_MESSAGES)} onSend={onSend} />
+      </section>
+    </div>
   );
 }

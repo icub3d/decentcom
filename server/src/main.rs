@@ -12,6 +12,7 @@ mod reactions;
 mod roles;
 mod server_info;
 mod storage;
+mod threads;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,6 +56,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", profiles::profile_router())
         .nest("/api/v1", attachments::router())
         .nest("/api/v1", reactions::router())
+        .nest("/api/v1", threads::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
         .layer(cors_layer())
