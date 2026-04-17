@@ -5,6 +5,7 @@ import {
   keyExportValidatePassphrase,
   type PassphraseValidation,
 } from "../../services/identity";
+import { useAppStore } from "../../stores/appStore";
 
 const strengthColors: Record<string, string> = {
   tooshort: "bg-ctp-red",
@@ -21,8 +22,10 @@ const strengthLabels: Record<string, string> = {
 };
 
 export function KeyExport() {
+  const getStateForBackup = useAppStore((s) => s.getStateForBackup);
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [includeSettings, setIncludeSettings] = useState(true);
   const [validation, setValidation] = useState<PassphraseValidation | null>(
     null,
   );
@@ -67,7 +70,10 @@ export function KeyExport() {
       if (!path) return;
 
       setExporting(true);
-      await keyExport(passphrase, path);
+      const metadata = includeSettings
+        ? JSON.stringify(getStateForBackup())
+        : undefined;
+      await keyExport(passphrase, path, metadata);
       setSuccess(true);
       setPassphrase("");
       setConfirm("");
@@ -145,6 +151,18 @@ export function KeyExport() {
           </p>
         )}
       </div>
+
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={includeSettings}
+          onChange={(e) => setIncludeSettings(e.target.checked)}
+          className="accent-ctp-blue"
+        />
+        <span className="text-xs text-ctp-subtext0">
+          Include server list &amp; settings
+        </span>
+      </label>
 
       {error && <p className="text-xs text-ctp-red">{error}</p>}
       {success && (

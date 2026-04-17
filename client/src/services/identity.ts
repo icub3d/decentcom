@@ -59,15 +59,19 @@ export async function keyExportValidatePassphrase(
 export async function keyExport(
   passphrase: string,
   path: string,
+  metadata?: string,
 ): Promise<void> {
-  await invoke("key_export", { passphrase, path });
+  await invoke("key_export", { passphrase, path, metadata: metadata ?? null });
 }
 
 export async function keyImport(
   passphrase: string,
   path: string,
-): Promise<{ pubkey: string }> {
-  return invoke<{ pubkey: string }>("key_import", { passphrase, path });
+): Promise<{ pubkey: string; metadata: string | null }> {
+  return invoke<{ pubkey: string; metadata: string | null }>("key_import", {
+    passphrase,
+    path,
+  });
 }
 
 export async function keyBackupReadPubkey(
