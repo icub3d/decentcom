@@ -33,7 +33,15 @@ jobs:
       - name: Build Astro
         run: cd site && pnpm build
         
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: './site/lighthouserc.json'
+        
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
