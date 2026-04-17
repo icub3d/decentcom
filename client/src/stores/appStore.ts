@@ -108,10 +108,13 @@ export async function initAppStoreForAccount(pubkey: string) {
   const oldKey = storageKeyFor(current);
   const newKey = storageKeyFor(pubkey);
 
-  // Migrate any data that was saved to the old (possibly un-namespaced) key.
-  const existing = localStorage.getItem(oldKey);
-  if (existing && !localStorage.getItem(newKey)) {
-    localStorage.setItem(newKey, existing);
+  // Only migrate data from the un-namespaced default key (first-ever run).
+  // Never copy one account's servers/settings into another account.
+  if (current === null) {
+    const existing = localStorage.getItem(oldKey);
+    if (existing && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, existing);
+    }
   }
 
   localStorage.setItem("decentcom-active-pubkey", pubkey);
