@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { useIdentityStore } from "../../stores/identityStore";
+import { useAccountManagerStore } from "../../stores/accountManagerStore";
 import { AccountSwitcher } from "./AccountSwitcher";
 
 const mockInvoke = vi.fn();
@@ -38,6 +39,15 @@ vi.mock("../../hooks/useIdentity", () => ({
   }),
 }));
 
+vi.mock("../../stores/appStore", () => ({
+  switchAppStoreAccount: vi.fn(),
+  initAppStoreForAccount: vi.fn(),
+  useAppStore: Object.assign(vi.fn(() => ({})), {
+    persist: { hasHydrated: () => true },
+    getState: () => ({ currentServerId: null, servers: {}, theme: "mocha" }),
+  }),
+}));
+
 describe("AccountSwitcher", () => {
   const onSwitch = vi.fn();
 
@@ -46,6 +56,7 @@ describe("AccountSwitcher", () => {
     mockInvoke.mockReset();
     mockRefresh.mockReset();
     mockGenerateIdentity.mockReset();
+    useAccountManagerStore.setState({ isSwitching: false });
   });
 
   function seedAccounts() {

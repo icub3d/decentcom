@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useIdentityStore, type AccountInfo } from "../../stores/identityStore";
 import { useIdentity } from "../../hooks/useIdentity";
-import { switchAppStoreAccount } from "../../stores/appStore";
+import { useAccountManager } from "../../hooks/useAccountManager";
 import { Modal } from "../ui/Modal";
 import { Setup } from "../../pages/Setup";
 import { KeyExport } from "../backup/KeyExport";
 
 interface AccountSwitcherProps {
-  onSwitchAccount: (pubkey: string) => void;
+  onSwitchAccount: (pubkey: string) => void | Promise<void>;
 }
 
 function shortPubkey(pubkey: string): string {
@@ -25,7 +25,9 @@ function displayName(account: AccountInfo): string {
 export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
   const { accounts, activeAccount, deleteAccount, renameAccount } = useIdentityStore();
   const { generateIdentity, importIdentity, refresh } = useIdentity();
+  const { handleSetupComplete } = useAccountManager();
   const [showSetup, setShowSetup] = useState(false);
+  const [preSetupAccount, setPreSetupAccount] = useState<string | null>(null);
   const [showBackup, setShowBackup] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -50,14 +52,9 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
     }
   };
 
-  const handleSetupComplete = async () => {
+  const onSetupComplete = async () => {
     setShowSetup(false);
-    await refresh();
-    const newActive = useIdentityStore.getState().activeAccount;
-    if (newActive && newActive !== activeAccount) {
-      switchAppStoreAccount(activeAccount, newActive);
-      onSwitchAccount(newActive);
-    }
+    await handleSetupComplete(refresh, onSwitchAccount, preSetupAccount);
   };
 
   return (
@@ -67,7 +64,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
           <Setup
             onGenerate={generateIdentity}
             onImport={importIdentity}
-            onComplete={() => void handleSetupComplete()}
+            onComplete={() => void onSetupComplete()}
             onCancel={() => setShowSetup(false)}
           />
         </Modal>
@@ -161,7 +158,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
         ))}
       </div>
       <button
-        onClick={() => setShowSetup(true)}
+        onClick={() => { setPreSetupAccount(activeAccount); setShowSetup(true); }}
         className="mt-2 w-full py-2 text-sm text-ctp-subtext1 hover:text-ctp-blue hover:bg-ctp-surface0 rounded-lg transition border border-dashed border-ctp-overlay0"
       >
         + Add Account

@@ -101,24 +101,37 @@ export const useAppStore = create<AppStore>()(
  * Called once after identity loads to ensure the persist middleware writes
  * to the correct per-account key from the very first session.
  */
-export function initAppStoreForAccount(pubkey: string) {
+export async function initAppStoreForAccount(pubkey: string) {
   const current = getActivePubkeyFromStorage();
   if (current === pubkey) return; // already namespaced
 
   const oldKey = storageKeyFor(current);
   const newKey = storageKeyFor(pubkey);
 
-  // Migrate any data that was saved to the old (possibly un-namespaced) key.
-  const existing = localStorage.getItem(oldKey);
-  if (existing && !localStorage.getItem(newKey)) {
-    localStorage.setItem(newKey, existing);
+  // Only migrate data from the un-namespaced default key (first-ever run).
+  // Never copy one account's servers/settings into another account.
+  if (current === null) {
+    const existing = localStorage.getItem(oldKey);
+    if (existing && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, existing);
+    }
   }
 
   localStorage.setItem("decentcom-active-pubkey", pubkey);
 
   // Point persist at the new key, then rehydrate so the store picks it up.
   useAppStore.persist.setOptions({ name: newKey });
-  void useAppStore.persist.rehydrate();
+
+  // Reset to defaults BEFORE rehydrate so that if the new key has no
+  // stored data, the store ends up with clean defaults instead of the
+  // previous account's stale in-memory state.
+  useAppStore.setState({
+    currentServerId: null,
+    servers: {},
+    theme: defaultTheme(),
+  });
+
+  await useAppStore.persist.rehydrate();
 }
 
 /**

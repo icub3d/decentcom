@@ -24,7 +24,7 @@ interface ServerSidebarProps {
   servers: Array<{ id: string; address: string; name?: string }>;
   currentServerId: string | null;
   onSelectServer: (id: string) => void;
-  onSwitchAccount: (pubkey: string) => void;
+  onSwitchAccount: (pubkey: string) => void | Promise<void>;
 }
 
 type OpenPanel = null | "user-settings" | "server-settings";

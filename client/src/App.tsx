@@ -6,10 +6,10 @@ import { AppShell } from "./components/layout/AppShell";
 import { TitleBar } from "./components/layout/TitleBar";
 import { useInviteLink } from "./hooks/useInviteLink";
 import { useIdentity } from "./hooks/useIdentity";
+import { useAccountManager } from "./hooks/useAccountManager";
 import { authenticateServer } from "./services/auth";
 import { getServerInfo } from "./api/server";
-import { useAppStore, switchAppStoreAccount, initAppStoreForAccount } from "./stores/appStore";
-import { useIdentityStore } from "./stores/identityStore";
+import { useAppStore, initAppStoreForAccount } from "./stores/appStore";
 import { useInvitesStore } from "./stores/invites";
 import { useServerStore } from "./stores/serverStore";
 import { Setup } from "./pages/Setup";
@@ -26,14 +26,18 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, addServer, initTheme } = useAppStore();
-  const { connect, disconnect, status } = useServerStore();
+  const { connect, status } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
 
-  const activeAccount = useIdentityStore((s) => s.activeAccount);
-  const setActiveAccount = useIdentityStore((s) => s.setActiveAccount);
+  const {
+    isSwitching,
+    switchAccount,
+    handleFirstRunComplete,
+    shouldAutoConnect,
+  } = useAccountManager();
 
   useEffect(() => {
     initTheme();
@@ -43,7 +47,7 @@ function App() {
   // to the active account so persist reads/writes go to the right key.
   useEffect(() => {
     if (hasIdentity && publicKey && !loading) {
-      initAppStoreForAccount(publicKey);
+      void initAppStoreForAccount(publicKey);
     }
   }, [hasIdentity, publicKey, loading]);
 
@@ -68,18 +72,20 @@ function App() {
     }
   }, [connect, addServer]);
 
+  // Auto-connect: gated by isSwitching to prevent races during account transitions.
   useEffect(() => {
     if (
-      hasIdentity &&
-      !loading &&
-      currentServerId &&
-      status === "disconnected" &&
-      !connectLoading &&
-      useAppStore.persist.hasHydrated()
+      shouldAutoConnect({
+        hasIdentity: !!hasIdentity,
+        loading,
+        currentServerId,
+        status,
+        connectLoading,
+      })
     ) {
-      handleConnect(currentServerId);
+      handleConnect(currentServerId!);
     }
-  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect]);
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);
@@ -98,26 +104,6 @@ function App() {
     }
   }
 
-  async function handleSwitchAccount(pubkey: string) {
-    // Switch the app store BEFORE disconnecting so that when disconnect()
-    // triggers the auto-connect effect, currentServerId already reflects
-    // the target account (preventing a stale handleConnect from adding
-    // the old account's server to the new account's storage).
-    const oldPubkey = useIdentityStore.getState().activeAccount;
-    switchAppStoreAccount(oldPubkey, pubkey);
-    disconnect();
-    await setActiveAccount(pubkey);
-    await refresh();
-  }
-
-  async function handleFirstRunComplete() {
-    await refresh();
-    const newActive = useIdentityStore.getState().activeAccount;
-    if (newActive) {
-      switchAppStoreAccount(activeAccount, newActive);
-    }
-  }
-
   let content;
   if (loading && hasIdentity === null) {
     content = (
@@ -131,7 +117,7 @@ function App() {
         <Setup
           onGenerate={generateIdentity}
           onImport={importIdentity}
-          onComplete={() => void handleFirstRunComplete()}
+          onComplete={() => void handleFirstRunComplete(refresh)}
         />
       </main>
     );
@@ -168,7 +154,7 @@ function App() {
           </div>
         )}
         <AppShell
-          onSwitchAccount={handleSwitchAccount}
+          onSwitchAccount={switchAccount}
         />
       </>
     );

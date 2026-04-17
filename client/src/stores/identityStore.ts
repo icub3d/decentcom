@@ -52,12 +52,18 @@ export const useIdentityStore = create<IdentityStore>()((set) => ({
       await invoke("set_active_account", { pubkey });
       const accounts = await invoke<AccountInfo[]>("list_accounts");
       const active = accounts.find((a) => a.active)?.pubkey ?? null;
+      if (active !== pubkey) {
+        const msg = `Backend active account mismatch: requested ${pubkey}, got ${active}`;
+        set({ error: msg, loading: false });
+        throw new Error(msg);
+      }
       set({ accounts, activeAccount: active, loading: false });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
         loading: false,
       });
+      throw err;
     }
   },
 
