@@ -51,22 +51,7 @@ fn seed_one(root: &Path, cfg: &seed::ServerConfig, users: &[User]) -> Result<()>
         )?;
     }
 
-    // Insert members and roles.
-    for user_def in cfg.users {
-        let user = User::find(users, user_def.name);
-        conn.execute(
-            "INSERT OR IGNORE INTO members (user_id, joined_at) VALUES (?1, ?2)",
-            rusqlite::params![user.user_id, ts],
-        )?;
-        for role_id in user_def.roles {
-            conn.execute(
-                "INSERT OR IGNORE INTO member_roles (user_id, role_id) VALUES (?1, ?2)",
-                rusqlite::params![user.user_id, role_id],
-            )?;
-        }
-    }
-
-    // Insert custom roles.
+    // Insert custom roles before member_roles to satisfy the FK constraint.
     for role in cfg.custom_roles {
         conn.execute(
             "INSERT OR IGNORE INTO roles \
@@ -82,6 +67,21 @@ fn seed_one(root: &Path, cfg: &seed::ServerConfig, users: &[User]) -> Result<()>
                 ts
             ],
         )?;
+    }
+
+    // Insert members and member_roles.
+    for user_def in cfg.users {
+        let user = User::find(users, user_def.name);
+        conn.execute(
+            "INSERT OR IGNORE INTO members (user_id, joined_at) VALUES (?1, ?2)",
+            rusqlite::params![user.user_id, ts],
+        )?;
+        for role_id in user_def.roles {
+            conn.execute(
+                "INSERT OR IGNORE INTO member_roles (user_id, role_id) VALUES (?1, ?2)",
+                rusqlite::params![user.user_id, role_id],
+            )?;
+        }
     }
 
     // Remove auto-created channels not in our seed config.
