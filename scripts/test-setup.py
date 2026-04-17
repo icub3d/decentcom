@@ -282,6 +282,99 @@ def make_invite_code():
 def make_msg_id(channel_id: str, idx: int) -> str:
     return f"msg-{channel_id}-{idx:03d}"
 
+def make_thread_id(parent_msg_id: str, idx: int = 0) -> str:
+    return f"thread-{parent_msg_id}-{idx:02d}"
+
+def seed_threads(db_path, config: dict):
+    """Insert threads and thread replies into the database."""
+    db_path = CONFIGS / db_path if not isinstance(db_path, Path) else db_path
+    conn = sqlite3.connect(str(db_path))
+    c = conn.cursor()
+    ts = now_iso()
+    base_time = datetime(2026, 4, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    for thread_config in config.get("threads", []):
+        parent_msg_id = thread_config["parent_message_id"]
+        thread_id = make_thread_id(parent_msg_id)
+
+        # Get parent message creator for the thread creator
+        c.execute("SELECT author_id, created_at FROM messages WHERE id = ?", (parent_msg_id,))
+        parent_row = c.fetchone()
+        if not parent_row:
+            print(f"  WARNING: Parent message {parent_msg_id} not found, skipping thread")
+            continue
+
+        creator_id = parent_row[0]
+
+        # Create thread record
+        c.execute(
+            "INSERT OR IGNORE INTO threads (id, channel_id, parent_message_id, creator_id, created_at, reply_count) "
+            "SELECT ?, (SELECT channel_id FROM messages WHERE id = ?), ?, ?, ?, 0",
+            (thread_id, parent_msg_id, parent_msg_id, creator_id, ts),
+        )
+
+        # Insert replies as messages with thread_id set
+        for idx, reply in enumerate(thread_config.get("replies", [])):
+            author = USERS[reply["author"]]
+            reply_time = base_time + timedelta(minutes=reply.get("offset_min", idx * 2))
+            reply_ts = reply_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+            # Get parent's channel_id
+            c.execute("SELECT channel_id FROM messages WHERE id = ?", (parent_msg_id,))
+            channel_row = c.fetchone()
+            if not channel_row:
+                continue
+            channel_id = channel_row[0]
+
+            reply_msg_id = f"msg-{thread_id}-reply-{idx:02d}"
+            c.execute(
+                "INSERT OR IGNORE INTO messages (id, channel_id, author_id, content, created_at, thread_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (reply_msg_id, channel_id, author["user_id"], reply["content"], reply_ts, thread_id),
+            )
+
+            # Update thread metadata
+            c.execute(
+                "UPDATE threads SET reply_count = reply_count + 1, last_reply_at = ? WHERE id = ?",
+                (reply_ts, thread_id),
+            )
+
+    conn.commit()
+    conn.close()
+
+def seed_reactions(db_path, config: dict):
+    """Insert emoji reactions into the database."""
+    db_path = CONFIGS / db_path if not isinstance(db_path, Path) else db_path
+    conn = sqlite3.connect(str(db_path))
+    c = conn.cursor()
+    ts = now_iso()
+
+    for reaction_config in config.get("reactions", []):
+        msg_id = reaction_config["message_id"]
+
+        # Verify message exists
+        c.execute("SELECT id FROM messages WHERE id = ?", (msg_id,))
+        if not c.fetchone():
+            print(f"  WARNING: Message {msg_id} not found, skipping reactions")
+            continue
+
+        for reaction in reaction_config.get("reactions", []):
+            emoji = reaction["emoji"]
+            for user_name in reaction.get("users", []):
+                user = USERS.get(user_name)
+                if not user:
+                    print(f"  WARNING: User {user_name} not found, skipping reaction")
+                    continue
+
+                c.execute(
+                    "INSERT OR IGNORE INTO reactions (message_id, user_id, emoji, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (msg_id, user["user_id"], emoji, ts),
+                )
+
+    conn.commit()
+    conn.close()
+
 def seed_database(db_name: str, config: dict):
     """Insert seed data into a server's SQLite database."""
     db_path = CONFIGS / db_name
@@ -376,6 +469,10 @@ def seed_database(db_name: str, config: dict):
     conn.commit()
     conn.close()
 
+    # Insert threads and reactions after the main transaction.
+    seed_threads(db_name, config)
+    seed_reactions(db_name, config)
+
 # ---------------------------------------------------------------------------
 # Server configurations
 # ---------------------------------------------------------------------------
@@ -457,6 +554,67 @@ OPEN_CONFIG = {
         {"channel_id": "ch-design", "author": "bob", "content": "Can we add a light theme too? Not everyone likes dark mode.", "offset_min": 8},
         {"channel_id": "ch-design", "author": "dave", "content": "Catppuccin Latte is the light variant. We could default to it based on OS preference.", "offset_min": 11},
     ],
+    "threads": [
+        {
+            "parent_message_id": "msg-ch-general-000",  # Alice's welcome
+            "replies": [
+                {"author": "bob", "content": "Thanks Alice! Excited to get started.", "offset_min": 2},
+                {"author": "charlie", "content": "This platform is really slick! 🚀", "offset_min": 4},
+                {"author": "dave", "content": "Looking forward to collaborating with everyone here.", "offset_min": 6},
+            ]
+        },
+        {
+            "parent_message_id": "msg-ch-frontend-026",  # Dave's drag-and-drop question
+            "replies": [
+                {"author": "alice", "content": "Definitely! Let's add that after we ship the basics.", "offset_min": 3},
+                {"author": "bob", "content": "I can help with the implementation if needed.", "offset_min": 5},
+            ]
+        },
+        {
+            "parent_message_id": "msg-ch-backend-030",  # Bob's SFU question
+            "replies": [
+                {"author": "alice", "content": "Great question. We're evaluating mediasoup vs livekit right now.", "offset_min": 2},
+                {"author": "bob", "content": "Both solid options. mediasoup would keep us more self-contained.", "offset_min": 4},
+                {"author": "dave", "content": "What about resource requirements? That might be the deciding factor.", "offset_min": 8},
+            ]
+        },
+    ],
+    "reactions": [
+        {
+            "message_id": "msg-ch-general-000",  # Alice's welcome
+            "reactions": [
+                {"emoji": "👋", "users": ["bob", "charlie", "dave"]},
+                {"emoji": "🎉", "users": ["alice", "bob"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-general-004",  # Alice's "Setting up the test environment"
+            "reactions": [
+                {"emoji": "👍", "users": ["bob", "dave"]},
+                {"emoji": "💯", "users": ["charlie"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-random-012",  # Alice's "That's the whole idea behind decentcom"
+            "reactions": [
+                {"emoji": "🚀", "users": ["alice", "dave", "charlie"]},
+                {"emoji": "🙌", "users": ["bob"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-random-010",  # Bob's "Anyone else think decentralized..."
+            "reactions": [
+                {"emoji": "💯", "users": ["dave", "alice"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-frontend-023",  # Dave's "The account switcher is looking great"
+            "reactions": [
+                {"emoji": "👏", "users": ["alice"]},
+                {"emoji": "❤️", "users": ["bob", "dave"]},
+            ]
+        },
+    ],
 }
 
 PRIVATE_CONFIG = {
@@ -495,6 +653,42 @@ PRIVATE_CONFIG = {
     ],
     "invites": [
         {"code": PRIVATE_INVITE, "created_by": "alice", "max_uses": 0},
+    ],
+    "threads": [
+        {
+            "parent_message_id": "msg-ch-lobby-000",  # Alice's "Welcome to the Private Server"
+            "replies": [
+                {"author": "bob", "content": "Thanks for creating this! It feels great to have a members-only space.", "offset_min": 3},
+                {"author": "alice", "content": "Happy to have you here. Let's keep it a quality discussion space.", "offset_min": 5},
+            ]
+        },
+        {
+            "parent_message_id": "msg-ch-feedback-011",  # Alice's "Glad to hear it. Any rough edges..."
+            "replies": [
+                {"author": "bob", "content": "Actually, now that you mention it, there's one more thing...", "offset_min": 2},
+            ]
+        },
+    ],
+    "reactions": [
+        {
+            "message_id": "msg-ch-lobby-000",  # Alice's welcome
+            "reactions": [
+                {"emoji": "👋", "users": ["bob"]},
+                {"emoji": "🤝", "users": ["alice", "bob"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-roadmap-007",  # Alice's "Current priorities"
+            "reactions": [
+                {"emoji": "✅", "users": ["bob"]},
+            ]
+        },
+        {
+            "message_id": "msg-ch-feedback-010",  # Bob's "The UI feels snappy"
+            "reactions": [
+                {"emoji": "🎯", "users": ["alice"]},
+            ]
+        },
     ],
 }
 
@@ -554,6 +748,12 @@ def print_summary():
     print("    Admin:         #announcements, #mod-log")
     print("    Projects:      #frontend, #backend, #design")
     print(f"    Messages: seeded across all channels")
+    print("    Sample Threads (test the threads feature):")
+    print("      #general → Alice's welcome (3 replies)")
+    print("      #frontend → Dave's drag-and-drop question (2 replies)")
+    print("      #backend → Bob's SFU question (3 replies)")
+    print("    Sample Reactions (test emoji reactions):")
+    print("      5+ messages with emoji reactions (multiple emojis per message)")
     print()
     print("  Private Server  (localhost:8082) — invite only")
     print("    Users: alice (admin), bob")
@@ -562,6 +762,11 @@ def print_summary():
     print("    General:  #lobby, #members-only")
     print("    Planning: #roadmap, #feedback")
     print(f"    Messages: seeded across all channels")
+    print("    Sample Threads:")
+    print("      #lobby → Alice's welcome (2 replies)")
+    print("      #feedback → Alice's feedback question (1 reply)")
+    print("    Sample Reactions:")
+    print("      3 messages with emoji reactions")
     print()
     print("  Strict Server   (localhost:8083) — allowlist only")
     print("    Users: alice (admin), bob")
