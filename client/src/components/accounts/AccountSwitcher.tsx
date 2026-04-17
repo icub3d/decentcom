@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useIdentityStore, type AccountInfo } from "../../stores/identityStore";
 import { useIdentity } from "../../hooks/useIdentity";
-import { switchAppStoreAccount } from "../../stores/appStore";
+import { useAccountManager } from "../../hooks/useAccountManager";
 import { Modal } from "../ui/Modal";
 import { Setup } from "../../pages/Setup";
 import { KeyExport } from "../backup/KeyExport";
 
 interface AccountSwitcherProps {
-  onSwitchAccount: (pubkey: string) => void;
+  onSwitchAccount: (pubkey: string) => void | Promise<void>;
 }
 
 function shortPubkey(pubkey: string): string {
@@ -25,6 +25,7 @@ function displayName(account: AccountInfo): string {
 export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
   const { accounts, activeAccount, deleteAccount, renameAccount } = useIdentityStore();
   const { generateIdentity, importIdentity, refresh } = useIdentity();
+  const { handleSetupComplete } = useAccountManager();
   const [showSetup, setShowSetup] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -50,14 +51,9 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
     }
   };
 
-  const handleSetupComplete = async () => {
+  const onSetupComplete = async () => {
     setShowSetup(false);
-    await refresh();
-    const newActive = useIdentityStore.getState().activeAccount;
-    if (newActive && newActive !== activeAccount) {
-      switchAppStoreAccount(activeAccount, newActive);
-      onSwitchAccount(newActive);
-    }
+    await handleSetupComplete(refresh, onSwitchAccount);
   };
 
   return (
@@ -67,7 +63,7 @@ export function AccountSwitcher({ onSwitchAccount }: AccountSwitcherProps) {
           <Setup
             onGenerate={generateIdentity}
             onImport={importIdentity}
-            onComplete={() => void handleSetupComplete()}
+            onComplete={() => void onSetupComplete()}
             onCancel={() => setShowSetup(false)}
           />
         </Modal>

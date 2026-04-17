@@ -10,7 +10,7 @@ import { MessageView } from "./MessageView";
 import { ServerSidebar } from "./ServerSidebar";
 
 export interface AppShellProps {
-  onSwitchAccount: (pubkey: string) => void;
+  onSwitchAccount: (pubkey: string) => void | Promise<void>;
 }
 
 export function AppShell({ onSwitchAccount }: AppShellProps) {

@@ -101,7 +101,7 @@ export const useAppStore = create<AppStore>()(
  * Called once after identity loads to ensure the persist middleware writes
  * to the correct per-account key from the very first session.
  */
-export function initAppStoreForAccount(pubkey: string) {
+export async function initAppStoreForAccount(pubkey: string) {
   const current = getActivePubkeyFromStorage();
   if (current === pubkey) return; // already namespaced
 
@@ -118,7 +118,7 @@ export function initAppStoreForAccount(pubkey: string) {
 
   // Point persist at the new key, then rehydrate so the store picks it up.
   useAppStore.persist.setOptions({ name: newKey });
-  void useAppStore.persist.rehydrate();
+  await useAppStore.persist.rehydrate();
 }
 
 /**
