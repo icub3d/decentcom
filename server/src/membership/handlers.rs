@@ -200,6 +200,8 @@ pub(super) async fn join_member(
             serde_json::json!({
                 "user_id": user.id,
                 "pubkey": user.pubkey,
+                "display_name": user.display_name,
+                "avatar_hash": user.avatar_hash,
                 "is_bot": user.is_bot,
                 "joined_at": Utc::now(),
                 "roles": [],

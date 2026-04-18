@@ -151,7 +151,7 @@ export const useMembersStore = create<MembersStore>((set) => ({
     set((state) => {
       switch (event.op) {
         case "MEMBER_JOIN": {
-          const payload = event.d as { user_id: string; pubkey: string; joined_at: string; is_bot?: boolean; roles?: { id: string; name: string; color: string | null; position: number }[] };
+          const payload = event.d as { user_id: string; pubkey: string; display_name?: string | null; avatar_hash?: string | null; joined_at: string; is_bot?: boolean; roles?: { id: string; name: string; color: string | null; position: number }[] };
           const existing = state.members.find((member) => member.user_id === payload.user_id);
           if (existing) {
             return {};
@@ -162,6 +162,8 @@ export const useMembersStore = create<MembersStore>((set) => ({
               {
                 user_id: payload.user_id,
                 pubkey: payload.pubkey,
+                display_name: payload.display_name ?? null,
+                avatar_hash: payload.avatar_hash ?? null,
                 joined_at: payload.joined_at,
                 is_bot: payload.is_bot ?? false,
                 roles: payload.roles ?? [],
