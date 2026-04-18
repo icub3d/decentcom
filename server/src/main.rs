@@ -298,10 +298,10 @@ mod tests {
     /// Full bot lifecycle:
     ///   1. Admin authenticates (first user → auto-granted admin).
     ///   2. Bot authenticates with is_bot=true → read-only session, queued in bot_approvals.
-    ///   3. Bot joins the server (Open mode allows it).
-    ///   4. Bot tries to send a message → blocked (read-only).
-    ///   5. Admin lists pending bots → bot appears.
-    ///   6. Admin approves the bot.
+    ///   3. Bot tries to send a message → 403 (not a member yet).
+    ///   4. Admin lists pending bots → bot appears.
+    ///   5. Admin approves the bot → bot is auto-joined as a member.
+    ///   6. Bot appears in the member list with is_bot=true.
     ///   7. Bot re-authenticates → non-read-only session.
     ///   8. Bot sends a message → succeeds.
     ///   9. Verify DB state: approval recorded, message authored by bot.
@@ -330,41 +330,23 @@ mod tests {
         assert_eq!(pending[0].pubkey, bot_pubkey);
         assert!(pending[0].approved_at.is_none(), "should still be pending");
 
-        // Step 3: Bot joins the server (Open mode).
-        let (join_status, join_body) = post(&state, "/api/v1/members/join", &bot_auth1.token, "").await;
-        assert_eq!(
-            join_status,
-            StatusCode::OK,
-            "bot should be able to join an open server: {}",
-            String::from_utf8_lossy(&join_body)
-        );
-
-        // Step 4: Bot tries to send a message — must be blocked.
-        let (send_status, send_body) = post(
+        // Step 3: Bot tries to send a message before being approved — not a member yet.
+        let (send_status, _) = post(
             &state,
             &format!("/api/v1/channels/{channel_id}/messages"),
             &bot_auth1.token,
             r#"{"content":"hello from unapproved bot"}"#,
         )
         .await;
-        assert_eq!(send_status, StatusCode::FORBIDDEN);
-        let body_str = String::from_utf8_lossy(&send_body);
-        assert!(
-            body_str.contains("read-only"),
-            "error should mention read-only: {body_str}"
-        );
+        assert_eq!(send_status, StatusCode::FORBIDDEN, "unapproved bot must be blocked");
 
-        // Step 5: Admin lists pending bots — bot should appear.
+        // Step 4: Admin lists pending bots — bot should appear.
         let (list_status, list_body) = get(&state, "/api/v1/admin/bots/pending", &admin.token).await;
         assert_eq!(list_status, StatusCode::OK);
         let pending_json: serde_json::Value = serde_json::from_slice(&list_body).unwrap();
-        assert_eq!(
-            pending_json["bots"].as_array().unwrap().len(),
-            1,
-            "one bot awaiting approval"
-        );
+        assert_eq!(pending_json["bots"].as_array().unwrap().len(), 1, "one bot awaiting approval");
 
-        // Step 6: Admin approves the bot.
+        // Step 5: Admin approves the bot — should auto-join the bot as a member.
         let (approve_status, approve_body) = post(
             &state,
             &format!("/api/v1/admin/bots/{bot_pubkey}/approve"),
@@ -388,12 +370,16 @@ mod tests {
         let pending_after = state.storage.list_pending_bots().await.unwrap();
         assert!(pending_after.is_empty(), "no bots pending after approval");
 
+        // Step 6: Bot should now be a member with is_bot=true.
+        let is_member = state.storage.is_member(&bot_auth1.user_id).await.unwrap();
+        assert!(is_member, "bot should be auto-joined as a member on approval");
+        let members = state.storage.list_members().await.unwrap();
+        let bot_member = members.iter().find(|m| m.user_id == bot_auth1.user_id).unwrap();
+        assert!(bot_member.is_bot, "member record should carry is_bot=true");
+
         // Step 7: Bot re-authenticates — should now get a non-read-only session.
         let bot_auth2 = do_auth(&state, 0x10, true).await;
-        assert!(
-            !bot_auth2.is_read_only,
-            "approved bot should get a normal (non-read-only) session"
-        );
+        assert!(!bot_auth2.is_read_only, "approved bot should get a normal (non-read-only) session");
         assert_eq!(bot_auth2.user_id, bot_auth1.user_id, "same user_id on re-auth");
 
         // Step 8: Bot sends a message with the new session.

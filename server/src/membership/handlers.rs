@@ -520,6 +520,25 @@ pub(super) async fn approve_bot(
         .await
         .map_err(storage_err)?;
 
+    // Auto-join: add the bot as a member so it's immediately visible in the member list.
+    if let Some(user) = state.storage.get_user_by_pubkey(&pubkey).await.map_err(internal)? {
+        if !state.storage.is_member(&user.id).await.map_err(internal)? {
+            let _ = state.storage.add_member(&user.id).await;
+            let _ = state.storage.add_member_role(&user.id, "everyone").await;
+
+            if let Some(msg) = event_json(
+                Op::MemberJoin,
+                serde_json::json!({
+                    "user_id": user.id,
+                    "pubkey": user.pubkey,
+                    "joined_at": Utc::now(),
+                }),
+            ) {
+                state.gateway.broadcast_all(&msg);
+            }
+        }
+    }
+
     Ok(Json(BotApprovalResponse::from(approval)))
 }
 
