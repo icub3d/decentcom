@@ -3,8 +3,9 @@ use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 use super::models::{
-    AllowlistEntry, Attachment, Ban, Channel, ChannelPermissionOverride, Invite, Member,
-    MemberRole, Message, Reaction, ReactionCount, Role, Session, Thread, ThreadSummary, User,
+    AllowlistEntry, Attachment, Ban, BotApproval, Channel, ChannelPermissionOverride, Invite,
+    Member, MemberRole, Message, Reaction, ReactionCount, Role, Session, Thread, ThreadSummary,
+    User,
 };
 use super::StorageError;
 
@@ -14,6 +15,7 @@ pub trait UserStore: Send + Sync {
         &self,
         pubkey: &str,
         display_name: Option<&str>,
+        is_bot: bool,
     ) -> Result<User, StorageError>;
     async fn get_user_by_id(&self, id: &str) -> Result<Option<User>, StorageError>;
     async fn get_user_by_pubkey(&self, pubkey: &str) -> Result<Option<User>, StorageError>;
@@ -85,6 +87,7 @@ pub trait SessionStore: Send + Sync {
         &self,
         user_id: &str,
         duration: Duration,
+        is_read_only: bool,
     ) -> Result<Session, StorageError>;
     async fn get_session(&self, token: &str) -> Result<Option<Session>, StorageError>;
     async fn delete_session(&self, token: &str) -> Result<(), StorageError>;
@@ -288,6 +291,21 @@ pub trait ThreadStore: Send + Sync {
     async fn update_thread_last_read(&self, thread_id: &str, user_id: &str) -> Result<(), StorageError>;
 }
 
+#[async_trait]
+pub trait BotStore: Send + Sync {
+    async fn upsert_bot_pending(&self, pubkey: &str) -> Result<BotApproval, StorageError>;
+    async fn approve_bot(
+        &self,
+        pubkey: &str,
+        approved_by: &str,
+        note: Option<&str>,
+    ) -> Result<BotApproval, StorageError>;
+    async fn revoke_bot(&self, pubkey: &str) -> Result<BotApproval, StorageError>;
+    async fn get_bot_approval(&self, pubkey: &str) -> Result<Option<BotApproval>, StorageError>;
+    async fn list_pending_bots(&self) -> Result<Vec<BotApproval>, StorageError>;
+    async fn is_bot_approved(&self, pubkey: &str) -> Result<bool, StorageError>;
+}
+
 pub struct CreateAttachmentParams<'a> {
     pub channel_id: &'a str,
     pub uploader_id: &'a str,
@@ -311,6 +329,7 @@ pub trait Storage:
     + AttachmentStore
     + ReactionStore
     + ThreadStore
+    + BotStore
 {
 }
 
@@ -326,5 +345,6 @@ impl<T> Storage for T where
         + AttachmentStore
         + ReactionStore
         + ThreadStore
+        + BotStore
 {
 }

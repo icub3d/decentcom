@@ -124,7 +124,7 @@ mod tests {
     #[tokio::test]
     async fn media_put_get_dedup() {
         let (s, _tmp) = storage_with_media().await;
-        let user = s.create_user("pk1", None).await.unwrap();
+        let user = s.create_user("pk1", None, false).await.unwrap();
 
         let id1 = s
             .put("abc123", "image/png", 100, &user.id, b"png data")

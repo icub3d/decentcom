@@ -22,6 +22,17 @@ pub(super) struct ErrorBody {
 
 type ApiResult<T> = Result<Json<T>, (StatusCode, Json<ErrorBody>)>;
 
+/// Challenge text for a given nonce and is_bot flag.
+/// Including the is_bot flag in the signed text binds the claim to the signature.
+pub(crate) fn challenge_text(nonce: &[u8], is_bot: bool) -> String {
+    let b64 = BASE64.encode(nonce);
+    if is_bot {
+        format!("{b64}|bot")
+    } else {
+        b64
+    }
+}
+
 pub(super) async fn challenge(
     State(state): State<AppState>,
     Json(req): Json<ChallengeRequest>,
@@ -33,10 +44,12 @@ pub(super) async fn challenge(
     let mut nonce = [0u8; 32];
     rand::rng().fill_bytes(&mut nonce);
 
-    state.challenge_store.insert(req.pubkey, nonce.to_vec());
+    state
+        .challenge_store
+        .insert(req.pubkey, nonce.to_vec(), req.is_bot);
 
     Ok(Json(ChallengeResponse {
-        challenge: BASE64.encode(nonce),
+        challenge: challenge_text(&nonce, req.is_bot),
     }))
 }
 
@@ -49,15 +62,14 @@ pub(super) async fn verify(
     let signature =
         parse_signature(&req.signature).map_err(|_| bad_request("invalid signature format"))?;
 
-    let nonce = state
+    let (nonce, is_bot) = state
         .challenge_store
         .take(&req.pubkey)
         .ok_or_else(|| unauthorized("challenge not found or expired"))?;
 
-    // The client signs the base64 challenge string it receives.
-    let challenge_text = BASE64.encode(nonce);
+    let text = challenge_text(&nonce, is_bot);
     verifying_key
-        .verify(challenge_text.as_bytes(), &signature)
+        .verify(text.as_bytes(), &signature)
         .map_err(|_| unauthorized("signature verification failed"))?;
 
     let mut created_user = false;
@@ -77,7 +89,7 @@ pub(super) async fn verify(
             created_user = true;
             state
                 .storage
-                .create_user(&req.pubkey, None)
+                .create_user(&req.pubkey, None, is_bot)
                 .await
                 .map_err(internal)?
         }
@@ -89,17 +101,32 @@ pub(super) async fn verify(
             let _ = state.storage.add_member(&user.id).await;
             let _ = state.storage.add_member_role(&user.id, "everyone").await;
             let _ = state.storage.add_member_role(&user.id, "admin").await;
-        } else if state.config.membership.mode == MembershipMode::Open {
+        } else if state.config.membership.mode == MembershipMode::Open && !is_bot {
             let _ = state.storage.add_member(&user.id).await;
             let _ = state.storage.add_member_role(&user.id, "everyone").await;
         }
+
+        if is_bot {
+            let _ = state.storage.upsert_bot_pending(&req.pubkey).await;
+        }
     }
+
+    let is_read_only = if user.is_bot {
+        !state
+            .storage
+            .is_bot_approved(&req.pubkey)
+            .await
+            .map_err(internal)?
+    } else {
+        false
+    };
 
     let session = state
         .storage
         .create_session(
             &user.id,
             Duration::from_secs(state.config.auth.session_ttl_seconds),
+            is_read_only,
         )
         .await
         .map_err(internal)?;
@@ -108,6 +135,7 @@ pub(super) async fn verify(
         token: session.token,
         user_id: user.id,
         expires_at: session.expires_at.to_rfc3339(),
+        is_read_only,
     }))
 }
 

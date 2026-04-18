@@ -12,8 +12,21 @@ export interface Member {
   pubkey: string;
   display_name: string | null;
   avatar_hash: string | null;
+  is_bot: boolean;
   joined_at: string;
   roles: MemberRole[];
+}
+
+export interface BotApproval {
+  pubkey: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  revoked_at: string | null;
+  note: string | null;
+}
+
+interface ListPendingBotsResponse {
+  bots: BotApproval[];
 }
 
 export interface Ban {
@@ -142,5 +155,39 @@ export async function removeRole(
     baseUrl,
     `/api/v1/members/${encodeURIComponent(pubkey)}/roles/${encodeURIComponent(roleId)}`,
     { method: "DELETE", token },
+  );
+}
+
+export async function listPendingBots(baseUrl: string, token: string): Promise<BotApproval[]> {
+  const response = await apiRequest<ListPendingBotsResponse>(
+    baseUrl,
+    "/api/v1/admin/bots/pending",
+    { token },
+  );
+  return response.bots;
+}
+
+export async function approveBot(
+  baseUrl: string,
+  token: string,
+  pubkey: string,
+  note?: string,
+): Promise<BotApproval> {
+  return apiRequest<BotApproval>(
+    baseUrl,
+    `/api/v1/admin/bots/${encodeURIComponent(pubkey)}/approve`,
+    { method: "POST", token, body: JSON.stringify({ note }) },
+  );
+}
+
+export async function revokeBot(
+  baseUrl: string,
+  token: string,
+  pubkey: string,
+): Promise<BotApproval> {
+  return apiRequest<BotApproval>(
+    baseUrl,
+    `/api/v1/admin/bots/${encodeURIComponent(pubkey)}/revoke`,
+    { method: "POST", token },
   );
 }

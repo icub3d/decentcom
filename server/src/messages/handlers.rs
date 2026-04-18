@@ -139,6 +139,9 @@ pub(super) async fn create_message(
     Path(channel_id): Path<String>,
     Json(req): Json<CreateMessageRequest>,
 ) -> ApiResult<MessageResponse> {
+    if auth.is_read_only {
+        return Err(forbidden("read-only session: bot requires admin approval"));
+    }
     ensure_channel_exists(&state, &channel_id).await?;
     let perms = effective_permissions(state.storage.as_ref(), &auth.user_id, Some(&channel_id))
         .await

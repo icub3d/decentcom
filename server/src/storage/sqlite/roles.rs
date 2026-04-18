@@ -339,7 +339,7 @@ mod tests {
     #[tokio::test]
     async fn member_role_assignment() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let user = s.create_user("pk-role", None).await.unwrap();
+        let user = s.create_user("pk-role", None, false).await.unwrap();
 
         let roles = s.list_roles().await.unwrap();
         let everyone = roles.into_iter().find(|r| r.id == "everyone").unwrap();

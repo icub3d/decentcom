@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct ServerInfo {
     pub name: String,
     pub description: Option<String>,
+    pub membership_mode: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-mod handlers;
+pub(crate) mod handlers;
 pub mod models;
 
 use axum::routing::{delete, get, post};
@@ -21,6 +21,9 @@ pub fn router() -> Router<AppState> {
             get(handlers::list_allowlist).post(handlers::add_allowlist),
         )
         .route("/allowlist/:pubkey", delete(handlers::remove_allowlist))
+        .route("/admin/bots/pending", get(handlers::list_pending_bots))
+        .route("/admin/bots/:pubkey/approve", post(handlers::approve_bot))
+        .route("/admin/bots/:pubkey/revoke", post(handlers::revoke_bot))
 }
 
 #[cfg(test)]

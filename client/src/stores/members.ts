@@ -2,15 +2,19 @@ import { create } from "zustand";
 
 import {
   addAllowlist,
+  approveBot,
   banMember,
   kickMember,
   listAllowlist,
   listBans,
   listMembers,
+  listPendingBots,
   removeAllowlist,
+  revokeBot,
   unbanMember,
   type AllowlistEntry,
   type Ban,
+  type BotApproval,
   type Member,
 } from "../api/members";
 
@@ -18,16 +22,20 @@ interface MembersStore {
   members: Member[];
   bans: Ban[];
   allowlist: AllowlistEntry[];
+  pendingBots: BotApproval[];
   loading: boolean;
   error: string | null;
   fetchMembers: (baseUrl: string, token: string) => Promise<void>;
   fetchBans: (baseUrl: string, token: string) => Promise<void>;
   fetchAllowlist: (baseUrl: string, token: string) => Promise<void>;
+  fetchPendingBots: (baseUrl: string, token: string) => Promise<void>;
   kick: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   ban: (baseUrl: string, token: string, pubkey: string, reason?: string) => Promise<void>;
   unban: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   addAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   removeAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
+  approveBotEntry: (baseUrl: string, token: string, pubkey: string, note?: string) => Promise<void>;
+  revokeBotEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   updateMemberProfile: (
     userId: string,
     patch: { display_name?: string | null; avatar_hash?: string | null },
@@ -40,6 +48,7 @@ export const useMembersStore = create<MembersStore>((set) => ({
   members: [],
   bans: [],
   allowlist: [],
+  pendingBots: [],
   loading: false,
   error: null,
 
@@ -103,6 +112,27 @@ export const useMembersStore = create<MembersStore>((set) => ({
     set((state) => ({ allowlist: state.allowlist.filter((entry) => entry.pubkey !== pubkey) }));
   },
 
+  fetchPendingBots: async (baseUrl, token) => {
+    set({ loading: true, error: null });
+    try {
+      const pendingBots = await listPendingBots(baseUrl, token);
+      set({ pendingBots, loading: false });
+    } catch (error) {
+      set({ loading: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+
+  approveBotEntry: async (baseUrl, token, pubkey, note) => {
+    await approveBot(baseUrl, token, pubkey, note);
+    set((state) => ({
+      pendingBots: state.pendingBots.filter((bot) => bot.pubkey !== pubkey),
+    }));
+  },
+
+  revokeBotEntry: async (baseUrl, token, pubkey) => {
+    await revokeBot(baseUrl, token, pubkey);
+  },
+
   updateMemberProfile: (userId, patch) => {
     set((state) => ({
       members: state.members.map((member) =>
@@ -121,10 +151,22 @@ export const useMembersStore = create<MembersStore>((set) => ({
     set((state) => {
       switch (event.op) {
         case "MEMBER_JOIN": {
-          const payload = event.d as { user_id: string; pubkey: string; joined_at: string; roles?: { id: string; name: string; color: string | null; position: number }[] };
+          const payload = event.d as { user_id: string; pubkey: string; display_name?: string | null; avatar_hash?: string | null; joined_at: string; is_bot?: boolean; roles?: { id: string; name: string; color: string | null; position: number }[] };
           const existing = state.members.find((member) => member.user_id === payload.user_id);
           if (existing) {
-            return {};
+            // Update profile fields in case they arrived incomplete in an earlier event.
+            return {
+              members: state.members.map((m) =>
+                m.user_id === payload.user_id
+                  ? {
+                      ...m,
+                      display_name: payload.display_name ?? m.display_name,
+                      avatar_hash: payload.avatar_hash ?? m.avatar_hash,
+                      is_bot: payload.is_bot ?? m.is_bot,
+                    }
+                  : m,
+              ),
+            };
           }
           return {
             members: [
@@ -132,7 +174,10 @@ export const useMembersStore = create<MembersStore>((set) => ({
               {
                 user_id: payload.user_id,
                 pubkey: payload.pubkey,
+                display_name: payload.display_name ?? null,
+                avatar_hash: payload.avatar_hash ?? null,
                 joined_at: payload.joined_at,
+                is_bot: payload.is_bot ?? false,
                 roles: payload.roles ?? [],
               },
             ],
@@ -176,6 +221,6 @@ export const useMembersStore = create<MembersStore>((set) => ({
   },
 
   clear: () => {
-    set({ members: [], bans: [], allowlist: [], loading: false, error: null });
+    set({ members: [], bans: [], allowlist: [], pendingBots: [], loading: false, error: null });
   },
 }));

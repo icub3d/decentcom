@@ -51,8 +51,15 @@ export function MemberList({
               <div className="flex items-center gap-2 min-w-0">
                 <Avatar pubkey={member.pubkey} avatarHash={member.avatar_hash} size={28} />
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-ctp-text truncate">
-                    {member.display_name ?? truncatePubkey(member.pubkey)}
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-semibold text-ctp-text truncate">
+                      {member.display_name ?? truncatePubkey(member.pubkey)}
+                    </span>
+                    {member.is_bot && (
+                      <span className="shrink-0 rounded bg-ctp-blue/20 px-1 py-0.5 text-[10px] font-bold text-ctp-blue">
+                        BOT
+                      </span>
+                    )}
                   </div>
                   {member.display_name && (
                     <div className="text-xs text-ctp-subtext0 truncate">{truncatePubkey(member.pubkey)}</div>

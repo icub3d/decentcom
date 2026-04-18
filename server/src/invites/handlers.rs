@@ -8,6 +8,7 @@ use shared::gateway::Op;
 use crate::auth::middleware::AuthUser;
 use crate::gateway::events::event_json;
 use crate::invites::{build_invite_link, generate_code};
+use crate::membership::handlers::member_to_response;
 use crate::invites::models::{
     CreateInviteRequest, InvitePreviewResponse, InviteResponse, JoinInviteResponse, JoinedMember,
     ListInvitesResponse,
@@ -321,16 +322,12 @@ pub(super) async fn join_invite(
     };
 
     if !already_member {
-        if let Some(msg) = event_json(
-            Op::MemberJoin,
-            serde_json::json!({
-                "user_id": user.id,
-                "pubkey": user.pubkey,
-                "roles": role_ids,
-                "joined_at": joined_at,
-            }),
-        ) {
-            state.gateway.broadcast_all(&msg);
+        if let Ok(Some(m)) = state.storage.get_member_by_pubkey(&user.pubkey).await {
+            if let Ok(full) = member_to_response(&state, m).await {
+                if let Some(msg) = event_json(Op::MemberJoin, full) {
+                    state.gateway.broadcast_all(&msg);
+                }
+            }
         }
     }
 

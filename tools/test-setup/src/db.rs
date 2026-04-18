@@ -45,9 +45,23 @@ fn seed_one(root: &Path, cfg: &seed::ServerConfig, users: &[User]) -> Result<()>
     for user_def in cfg.users {
         let user = User::find(users, user_def.name);
         conn.execute(
-            "INSERT OR IGNORE INTO users (id, pubkey, display_name, created_at, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR IGNORE INTO users (id, pubkey, display_name, is_bot, created_at, updated_at) \
+             VALUES (?1, ?2, ?3, 0, ?4, ?5)",
             rusqlite::params![user.user_id, user.pubkey, user_def.display_name, ts, ts],
+        )?;
+    }
+
+    // Insert bot users as pending (no approved_at) so the approval flow can be tested.
+    for bot_def in cfg.bots {
+        let bot = User::find(users, bot_def.name);
+        conn.execute(
+            "INSERT OR IGNORE INTO users (id, pubkey, display_name, is_bot, created_at, updated_at) \
+             VALUES (?1, ?2, ?3, 1, ?4, ?5)",
+            rusqlite::params![bot.user_id, bot.pubkey, bot.name, ts, ts],
+        )?;
+        conn.execute(
+            "INSERT OR IGNORE INTO bot_approvals (pubkey) VALUES (?1)",
+            rusqlite::params![bot.pubkey],
         )?;
     }
 

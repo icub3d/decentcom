@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { CreateInviteDialog } from "../invites/CreateInviteDialog";
 import { AllowlistEditor } from "../settings/AllowlistEditor";
 import { BanList } from "../settings/BanList";
+import { BotApprovalPanel } from "../settings/BotApprovalPanel";
 import { MembershipSettings } from "../settings/MembershipSettings";
 import { InviteList } from "../invites/InviteList";
 import { ProfileEditor } from "../profile/ProfileEditor";
@@ -51,6 +52,7 @@ function initials(name: string | undefined, address: string): string {
 export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwitchAccount }: ServerSidebarProps) {
   const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
+  const membershipMode = useServerStore((state) => state.membershipMode);
 
   const token = useServerStore((state) => state.sessionToken);
   const roles = useServerStore((state) => state.roles);
@@ -69,11 +71,15 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
 
   const bans = useMembersStore((state) => state.bans);
   const allowlist = useMembersStore((state) => state.allowlist);
+  const pendingBots = useMembersStore((state) => state.pendingBots);
   const fetchBans = useMembersStore((state) => state.fetchBans);
   const fetchAllowlist = useMembersStore((state) => state.fetchAllowlist);
+  const fetchPendingBots = useMembersStore((state) => state.fetchPendingBots);
   const unbanMember = useMembersStore((state) => state.unban);
   const addAllowlist = useMembersStore((state) => state.addAllowlistEntry);
   const removeAllowlist = useMembersStore((state) => state.removeAllowlistEntry);
+  const approveBotEntry = useMembersStore((state) => state.approveBotEntry);
+  const revokeBotEntry = useMembersStore((state) => state.revokeBotEntry);
 
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
 
@@ -111,6 +117,7 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
     }
     if (canManageServer) {
       await fetchAllowlist(address, token);
+      await fetchPendingBots(address, token);
     }
   }
 
@@ -208,7 +215,7 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
       {openPanel === "server-settings" && showServerSettings && (
         <div className="absolute bottom-3 left-20 z-10 w-104 pl-2">
           <div className="grid gap-3">
-            <MembershipSettings mode="server-config" />
+            <MembershipSettings mode={membershipMode} />
             {canManageInvites && (
               <>
                 <CreateInviteDialog
@@ -247,21 +254,39 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
               />
             )}
             {canManageServer && (
-              <AllowlistEditor
-                entries={allowlist}
-                onAdd={async (pubkey) => {
-                  if (!address || !token) {
-                    throw new Error("Not connected");
-                  }
-                  await addAllowlist(address, token, pubkey);
-                }}
-                onRemove={async (pubkey) => {
-                  if (!address || !token) {
-                    throw new Error("Not connected");
-                  }
-                  await removeAllowlist(address, token, pubkey);
-                }}
-              />
+              <>
+                <AllowlistEditor
+                  entries={allowlist}
+                  onAdd={async (pubkey) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    await addAllowlist(address, token, pubkey);
+                  }}
+                  onRemove={async (pubkey) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    await removeAllowlist(address, token, pubkey);
+                  }}
+                />
+                <BotApprovalPanel
+                  pendingBots={pendingBots}
+                  onApprove={async (pubkey) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    await approveBotEntry(address, token, pubkey);
+                  }}
+                  onRevoke={async (pubkey) => {
+                    if (!address || !token) {
+                      throw new Error("Not connected");
+                    }
+                    await revokeBotEntry(address, token, pubkey);
+                    await fetchPendingBots(address, token);
+                  }}
+                />
+              </>
             )}
           </div>
         </div>

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::storage::models::{AllowlistEntry, Ban, Role};
+use crate::storage::models::{AllowlistEntry, Ban, BotApproval, Role};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BanRequest {
@@ -19,6 +19,7 @@ pub struct MemberWithRoles {
     pub pubkey: String,
     pub display_name: Option<String>,
     pub avatar_hash: Option<String>,
+    pub is_bot: bool,
     pub joined_at: DateTime<Utc>,
     pub roles: Vec<RoleSummary>,
 }
@@ -66,6 +67,25 @@ pub struct ListAllowlistResponse {
     pub entries: Vec<AllowlistEntryResponse>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct BotApprovalResponse {
+    pub pubkey: String,
+    pub approved_by: Option<String>,
+    pub approved_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ListPendingBotsResponse {
+    pub bots: Vec<BotApprovalResponse>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApproveBotRequest {
+    pub note: Option<String>,
+}
+
 impl From<Role> for RoleSummary {
     fn from(value: Role) -> Self {
         Self {
@@ -94,6 +114,18 @@ impl From<AllowlistEntry> for AllowlistEntryResponse {
             pubkey: value.pubkey,
             added_by: value.added_by,
             added_at: value.added_at,
+        }
+    }
+}
+
+impl From<BotApproval> for BotApprovalResponse {
+    fn from(value: BotApproval) -> Self {
+        Self {
+            pubkey: value.pubkey,
+            approved_by: value.approved_by,
+            approved_at: value.approved_at,
+            revoked_at: value.revoked_at,
+            note: value.note,
         }
     }
 }

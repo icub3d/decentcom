@@ -41,6 +41,8 @@ pub fn all_users() -> Vec<User> {
         User::new("bob", [0x02; 32]),
         User::new("charlie", [0x03; 32]),
         User::new("dave", [0x04; 32]),
+        User::new("bot-alpha", [0x10; 32]),
+        User::new("bot-beta", [0x11; 32]),
     ]
 }
 
@@ -133,6 +135,10 @@ pub struct AllowlistEntry {
     pub added_by: &'static str,
 }
 
+pub struct BotSeed {
+    pub name: &'static str,
+}
+
 pub struct ServerConfig {
     pub db_name: &'static str,
     pub display_name: &'static str,
@@ -144,6 +150,7 @@ pub struct ServerConfig {
     pub reactions: &'static [MessageReactions],
     pub invites: &'static [InviteSeed],
     pub allowlist: &'static [AllowlistEntry],
+    pub bots: &'static [BotSeed],
 }
 
 static ALL_SERVERS: [&ServerConfig; 3] = [&servers::OPEN, &servers::PRIVATE, &servers::STRICT];
@@ -158,9 +165,18 @@ pub fn print_summary(users: &[User]) {
     println!("{}", "=".repeat(60));
     println!("\nTest Accounts (all stored in OS keychain):");
     println!("{}", "-".repeat(60));
-    for user in users {
+    let (bots, humans): (Vec<_>, Vec<_>) = users.iter().partition(|u| u.name.starts_with("bot-"));
+    for user in &humans {
         println!("  {:<10}  {}…", user.name, &user.pubkey[..20]);
     }
+    println!();
+    println!("Bot Accounts:");
+    println!("{}", "-".repeat(60));
+    for bot in &bots {
+        println!("  {:<12}  id: {}  pubkey: {}…", bot.name, bot.user_id, &bot.pubkey[..20]);
+    }
+    println!("  bot-alpha — approved on Open Server (localhost:8081)");
+    println!("  bot-beta  — not registered with any server");
     println!();
     println!("Server Layout:");
     println!("{}", "-".repeat(60));

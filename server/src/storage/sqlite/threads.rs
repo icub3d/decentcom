@@ -173,7 +173,7 @@ mod tests {
 
     async fn setup() -> (SqliteStorage, String, String, String) {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let u = s.create_user("pk", None).await.unwrap();
+        let u = s.create_user("pk", None, false).await.unwrap();
         let c = s.create_channel("general", None, 0).await.unwrap();
         let m = s.create_message(&c.id, &u.id, "root", None).await.unwrap();
         (s, u.id, c.id, m.id)
