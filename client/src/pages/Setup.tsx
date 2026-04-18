@@ -4,6 +4,7 @@ import { IdentityInfo, PublicKeyInfo } from "../hooks/useIdentity";
 import { KeySafety } from "./KeySafety";
 import { keyImport, keyBackupReadPubkey } from "../services/identity";
 import { useAppStore, type AppBackupState } from "../stores/appStore";
+import { About } from "../components/about/About";
 
 function shortPubkey(pubkey: string): string {
   if (pubkey.length <= 12) return pubkey;
@@ -19,6 +20,7 @@ interface SetupProps {
 
 export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps) {
   const [view, setView] = useState<"choice" | "safety" | "import" | "backup" | "settings-restored">("choice");
+  const [showAbout, setShowAbout] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<IdentityInfo | null>(null);
   const [importText, setImportText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -246,47 +248,58 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
   }
 
   return (
-    <div className="max-w-md mx-auto p-8 space-y-8 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-ctp-text">
-          {onCancel ? "Add Account" : "Welcome"}
-        </h1>
-        <p className="text-ctp-subtext0">
-          {onCancel
-            ? "Create or import another identity."
-            : "Set up your decentcom identity to get started."}
-        </p>
-      </div>
-      <div className="space-y-4">
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="w-full py-4 bg-ctp-blue hover:bg-ctp-sapphire disabled:bg-ctp-overlay0 text-ctp-crust rounded-xl font-bold text-lg transition-all shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer"
-        >
-          {loading ? "Generating..." : "Create New Identity"}
-        </button>
-        <button
-          onClick={() => setView("import")}
-          className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
-        >
-          Import Seed Phrase
-        </button>
-        <button
-          onClick={() => setView("backup")}
-          className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
-        >
-          Restore from Backup File
-        </button>
-        {onCancel && (
+    <>
+      {showAbout && <About onClose={() => setShowAbout(false)} />}
+      <div className="max-w-md mx-auto p-8 space-y-8 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-ctp-text">
+            {onCancel ? "Add Account" : "Welcome"}
+          </h1>
+          <p className="text-ctp-subtext0">
+            {onCancel
+              ? "Create or import another identity."
+              : "Set up your decentcom identity to get started."}
+          </p>
+          {!onCancel && (
+            <button
+              onClick={() => setShowAbout(true)}
+              className="text-xs text-ctp-subtext1 hover:text-ctp-blue transition-colors underline cursor-pointer"
+            >
+              Learn more about decentcom
+            </button>
+          )}
+        </div>
+        <div className="space-y-4">
           <button
-            onClick={onCancel}
-            className="w-full py-3 text-ctp-subtext1 hover:text-ctp-text transition-colors text-sm"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full py-4 bg-ctp-blue hover:bg-ctp-sapphire disabled:bg-ctp-overlay0 text-ctp-crust rounded-xl font-bold text-lg transition-all shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
-            Cancel
+            {loading ? "Generating..." : "Create New Identity"}
           </button>
-        )}
+          <button
+            onClick={() => setView("import")}
+            className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
+          >
+            Import Seed Phrase
+          </button>
+          <button
+            onClick={() => setView("backup")}
+            className="w-full py-4 bg-ctp-surface0 hover:bg-ctp-surface1 text-ctp-text rounded-xl font-bold text-lg transition-all border border-ctp-overlay0 hover:scale-[1.02] active:scale-95 cursor-pointer"
+          >
+            Restore from Backup File
+          </button>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="w-full py-3 text-ctp-subtext1 hover:text-ctp-text transition-colors text-sm"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        {error && <p className="text-ctp-red text-center text-sm">{error}</p>}
       </div>
-      {error && <p className="text-ctp-red text-center text-sm">{error}</p>}
-    </div>
+    </>
   );
 }

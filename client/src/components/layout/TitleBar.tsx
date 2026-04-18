@@ -1,10 +1,12 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
+import { About } from "../about/About";
 
 const appWindow = getCurrentWindow();
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
     const updateMaximized = async () => {
@@ -31,6 +33,8 @@ export function TitleBar() {
   const handleClose = () => appWindow.close();
 
   return (
+    <>
+      {showAbout && <About onClose={() => setShowAbout(false)} />}
     <div
       data-tauri-drag-region
       className="h-8 bg-ctp-crust flex items-center justify-between select-none border-b border-ctp-overlay0"
@@ -40,6 +44,14 @@ export function TitleBar() {
       </div>
 
       <div className="flex items-center h-full">
+        <button
+          onClick={() => setShowAbout(true)}
+          data-tauri-no-drag
+          className="w-8 h-full flex items-center justify-center hover:bg-ctp-surface0 transition-colors text-ctp-subtext1 hover:text-ctp-text text-sm"
+          title="About decentcom"
+        >
+          ⓘ
+        </button>
         <button
           onClick={handleMinimize}
           data-tauri-no-drag
@@ -99,5 +111,6 @@ export function TitleBar() {
         </button>
       </div>
     </div>
+    </>
   );
 }
