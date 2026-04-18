@@ -1,6 +1,6 @@
 use super::{
-    AllowlistEntry, Channel, CustomRole, EmojiReaction, InviteSeed, Message, MessageReactions,
-    ServerConfig, ThreadReply, ThreadSeed, UserConfig,
+    AllowlistEntry, BotSeed, Channel, CustomRole, EmojiReaction, InviteSeed, Message,
+    MessageReactions, ServerConfig, ThreadReply, ThreadSeed, UserConfig,
 };
 use super::perm;
 
@@ -434,6 +434,10 @@ pub static OPEN: ServerConfig = ServerConfig {
     ],
     invites: &[],
     allowlist: &[],
+    bots: &[BotSeed {
+        name: "bot-alpha",
+        approved_by: "alice",
+    }],
 };
 
 pub static PRIVATE: ServerConfig = ServerConfig {
@@ -630,6 +634,7 @@ pub static PRIVATE: ServerConfig = ServerConfig {
         max_uses: 0,
     }],
     allowlist: &[],
+    bots: &[],
 };
 
 pub static STRICT: ServerConfig = ServerConfig {
@@ -754,4 +759,5 @@ pub static STRICT: ServerConfig = ServerConfig {
             added_by: "alice",
         },
     ],
+    bots: &[],
 };
