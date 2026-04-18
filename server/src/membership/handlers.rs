@@ -76,7 +76,7 @@ fn is_valid_pubkey(pubkey: &str) -> bool {
         .unwrap_or(false)
 }
 
-async fn member_to_response(
+pub(crate) async fn member_to_response(
     state: &AppState,
     member: Member,
 ) -> Result<MemberWithRoles, crate::storage::StorageError> {
@@ -195,19 +195,12 @@ pub(super) async fn join_member(
             let _ = state.storage.add_member_role(&auth.user_id, "admin").await;
         }
 
-        if let Some(msg) = event_json(
-            Op::MemberJoin,
-            serde_json::json!({
-                "user_id": user.id,
-                "pubkey": user.pubkey,
-                "display_name": user.display_name,
-                "avatar_hash": user.avatar_hash,
-                "is_bot": user.is_bot,
-                "joined_at": Utc::now(),
-                "roles": [],
-            }),
-        ) {
-            state.gateway.broadcast_all(&msg);
+        if let Ok(Some(m)) = state.storage.get_member_by_pubkey(&user.pubkey).await {
+            if let Ok(full) = member_to_response(&state, m).await {
+                if let Some(msg) = event_json(Op::MemberJoin, full) {
+                    state.gateway.broadcast_all(&msg);
+                }
+            }
         }
     }
 
@@ -530,17 +523,12 @@ pub(super) async fn approve_bot(
             let _ = state.storage.add_member(&user.id).await;
             let _ = state.storage.add_member_role(&user.id, "everyone").await;
 
-            if let Some(msg) = event_json(
-                Op::MemberJoin,
-                serde_json::json!({
-                    "user_id": user.id,
-                    "pubkey": user.pubkey,
-                    "is_bot": user.is_bot,
-                    "joined_at": Utc::now(),
-                    "roles": [],
-                }),
-            ) {
-                state.gateway.broadcast_all(&msg);
+            if let Ok(Some(m)) = state.storage.get_member_by_pubkey(&pubkey).await {
+                if let Ok(full) = member_to_response(&state, m).await {
+                    if let Some(msg) = event_json(Op::MemberJoin, full) {
+                        state.gateway.broadcast_all(&msg);
+                    }
+                }
             }
         }
     }
