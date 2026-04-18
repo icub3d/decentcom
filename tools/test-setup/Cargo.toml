@@ -21,7 +21,7 @@ ed25519-dalek.workspace = true
 hex.workspace = true
 keyring = { version = "3", features = ["sync-secret-service"] }
 rand.workspace = true
-rusqlite = "0.31"
+rusqlite = "0.32"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

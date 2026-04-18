@@ -18,7 +18,7 @@ bs58 = "0.5"
 base64 = "0.22"
 rand = "0.9"
 hex = "0.4"
-sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono", "migrate"] }
+sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio", "chrono", "migrate"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 tracing = "0.1"
