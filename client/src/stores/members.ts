@@ -154,7 +154,19 @@ export const useMembersStore = create<MembersStore>((set) => ({
           const payload = event.d as { user_id: string; pubkey: string; display_name?: string | null; avatar_hash?: string | null; joined_at: string; is_bot?: boolean; roles?: { id: string; name: string; color: string | null; position: number }[] };
           const existing = state.members.find((member) => member.user_id === payload.user_id);
           if (existing) {
-            return {};
+            // Update profile fields in case they arrived incomplete in an earlier event.
+            return {
+              members: state.members.map((m) =>
+                m.user_id === payload.user_id
+                  ? {
+                      ...m,
+                      display_name: payload.display_name ?? m.display_name,
+                      avatar_hash: payload.avatar_hash ?? m.avatar_hash,
+                      is_bot: payload.is_bot ?? m.is_bot,
+                    }
+                  : m,
+              ),
+            };
           }
           return {
             members: [
