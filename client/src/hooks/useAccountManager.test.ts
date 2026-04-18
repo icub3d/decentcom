@@ -166,6 +166,7 @@ describe("useAccountManager", () => {
         currentServerId: "http://localhost:8080",
         status: "disconnected",
         connectLoading: false,
+        address: "http://localhost:8080",
       });
 
       expect(canConnect).toBe(false);
@@ -181,6 +182,23 @@ describe("useAccountManager", () => {
         currentServerId: "http://localhost:8080",
         status: "disconnected",
         connectLoading: false,
+        address: "http://localhost:8080",
+      });
+
+      expect(canConnect).toBe(true);
+    });
+
+    it("returns true when currentServerId is different from current address", () => {
+      useAccountManagerStore.setState({ isSwitching: false });
+      const { result } = renderHook(() => useAccountManager());
+
+      const canConnect = result.current.shouldAutoConnect({
+        hasIdentity: true,
+        loading: false,
+        currentServerId: "http://localhost:8081",
+        status: "connected",
+        connectLoading: false,
+        address: "http://localhost:8080",
       });
 
       expect(canConnect).toBe(true);
@@ -195,6 +213,7 @@ describe("useAccountManager", () => {
         currentServerId: null,
         status: "disconnected",
         connectLoading: false,
+        address: "",
       });
 
       expect(canConnect).toBe(false);
