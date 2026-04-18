@@ -118,7 +118,7 @@ mod tests {
     #[tokio::test]
     async fn create_and_get_attachment() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let user = s.create_user("pk1", None).await.unwrap();
+        let user = s.create_user("pk1", None, false).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
 
         let att = s
@@ -147,7 +147,7 @@ mod tests {
     #[tokio::test]
     async fn associate_attachments_with_message() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let user = s.create_user("pk1", None).await.unwrap();
+        let user = s.create_user("pk1", None, false).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
         let msg = s.create_message(&ch.id, &user.id, "hello", None).await.unwrap();
 
@@ -189,8 +189,8 @@ mod tests {
     #[tokio::test]
     async fn cannot_associate_others_attachment() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let user1 = s.create_user("pk1", None).await.unwrap();
-        let user2 = s.create_user("pk2", None).await.unwrap();
+        let user1 = s.create_user("pk1", None, false).await.unwrap();
+        let user2 = s.create_user("pk2", None, false).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
         let msg = s.create_message(&ch.id, &user2.id, "hi", None).await.unwrap();
 
@@ -217,7 +217,7 @@ mod tests {
     #[tokio::test]
     async fn cannot_double_associate() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let user = s.create_user("pk1", None).await.unwrap();
+        let user = s.create_user("pk1", None, false).await.unwrap();
         let ch = s.create_channel("general", None, 0).await.unwrap();
         let msg1 = s.create_message(&ch.id, &user.id, "m1", None).await.unwrap();
         let msg2 = s.create_message(&ch.id, &user.id, "m2", None).await.unwrap();

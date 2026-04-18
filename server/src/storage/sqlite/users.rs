@@ -8,11 +8,13 @@ use crate::storage::traits::UserStore;
 use crate::storage::StorageError;
 
 fn row_to_user(row: sqlx::sqlite::SqliteRow) -> Result<User, StorageError> {
+    let is_bot_int: i64 = row.try_get("is_bot")?;
     Ok(User {
         id: row.try_get("id")?,
         pubkey: row.try_get("pubkey")?,
         display_name: row.try_get("display_name")?,
         avatar_hash: row.try_get("avatar_hash")?,
+        is_bot: is_bot_int != 0,
         created_at: row.try_get::<DateTime<Utc>, _>("created_at")?,
         updated_at: row.try_get::<DateTime<Utc>, _>("updated_at")?,
     })
@@ -24,14 +26,18 @@ impl UserStore for SqliteStorage {
         &self,
         pubkey: &str,
         display_name: Option<&str>,
+        is_bot: bool,
     ) -> Result<User, StorageError> {
         let id = self.new_id();
-        sqlx::query("INSERT INTO users (id, pubkey, display_name) VALUES (?, ?, ?)")
-            .bind(&id)
-            .bind(pubkey)
-            .bind(display_name)
-            .execute(self.pool())
-            .await?;
+        sqlx::query(
+            "INSERT INTO users (id, pubkey, display_name, is_bot) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(pubkey)
+        .bind(display_name)
+        .bind(is_bot as i64)
+        .execute(self.pool())
+        .await?;
         self.get_user_by_id(&id)
             .await?
             .ok_or(StorageError::NotFound)
@@ -106,9 +112,10 @@ mod tests {
     #[tokio::test]
     async fn user_crud() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let u = s.create_user("pk1", Some("alice")).await.unwrap();
+        let u = s.create_user("pk1", Some("alice"), false).await.unwrap();
         assert_eq!(u.pubkey, "pk1");
         assert_eq!(u.display_name.as_deref(), Some("alice"));
+        assert!(!u.is_bot);
 
         let by_id = s.get_user_by_id(&u.id).await.unwrap().unwrap();
         assert_eq!(by_id, u);
@@ -128,10 +135,17 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bot_user_is_flagged() {
+        let s = SqliteStorage::in_memory().await.unwrap();
+        let bot = s.create_user("pk-bot", None, true).await.unwrap();
+        assert!(bot.is_bot);
+    }
+
+    #[tokio::test]
     async fn duplicate_pubkey_is_conflict() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        s.create_user("dup", None).await.unwrap();
-        let err = s.create_user("dup", None).await.unwrap_err();
+        s.create_user("dup", None, false).await.unwrap();
+        let err = s.create_user("dup", None, false).await.unwrap_err();
         assert!(matches!(err, StorageError::Conflict(_)));
     }
 }

@@ -32,6 +32,7 @@ pub struct MemberUser {
     pub user_id: String,
     pub permissions: i64,
     pub highest_role_position: i32,
+    pub is_read_only: bool,
 }
 
 impl MemberUser {
@@ -116,6 +117,7 @@ where
             user_id: auth.user_id,
             permissions,
             highest_role_position,
+            is_read_only: auth.is_read_only,
         })
     }
 }

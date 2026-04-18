@@ -22,8 +22,18 @@ pub struct User {
     pub pubkey: String,
     pub display_name: Option<String>,
     pub avatar_hash: Option<String>,
+    pub is_bot: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BotApproval {
+    pub pubkey: String,
+    pub approved_by: Option<String>,
+    pub approved_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,6 +89,7 @@ pub struct ThreadSummary {
 pub struct Session {
     pub token: String,
     pub user_id: String,
+    pub is_read_only: bool,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
 }
@@ -115,6 +126,7 @@ pub struct Member {
     pub pubkey: String,
     pub display_name: Option<String>,
     pub avatar_hash: Option<String>,
+    pub is_bot: bool,
     pub joined_at: DateTime<Utc>,
 }
 

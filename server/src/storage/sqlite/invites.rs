@@ -129,7 +129,7 @@ mod tests {
     #[tokio::test]
     async fn code_can_be_created_and_listed() {
         let storage = SqliteStorage::in_memory().await.unwrap();
-        let creator = storage.create_user("pk-invite-creator", None).await.unwrap();
+        let creator = storage.create_user("pk-invite-creator", None, false).await.unwrap();
 
         let invite = storage
             .create_invite("abc12345", &creator.id, None, 1, None)
@@ -144,7 +144,7 @@ mod tests {
     #[tokio::test]
     async fn single_use_invite_exhausts() {
         let storage = SqliteStorage::in_memory().await.unwrap();
-        let creator = storage.create_user("pk-invite-consume", None).await.unwrap();
+        let creator = storage.create_user("pk-invite-consume", None, false).await.unwrap();
 
         storage
             .create_invite("consume01", &creator.id, None, 1, None)
@@ -163,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn expiry_is_checked() {
         let storage = SqliteStorage::in_memory().await.unwrap();
-        let creator = storage.create_user("pk-invite-expiry", None).await.unwrap();
+        let creator = storage.create_user("pk-invite-expiry", None, false).await.unwrap();
 
         let expires_at = Utc::now() - ChronoDuration::seconds(1);
         storage

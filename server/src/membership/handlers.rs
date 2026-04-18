@@ -9,8 +9,9 @@ use crate::auth::middleware::AuthUser;
 use crate::config::MembershipMode;
 use crate::gateway::events::event_json;
 use crate::membership::models::{
-    AllowlistRequest, AllowlistEntryResponse, BanRequest, BanResponse, JoinMemberResponse,
-    ListAllowlistResponse, ListBansResponse, ListMembersResponse, MemberWithRoles, RoleSummary,
+    AllowlistRequest, AllowlistEntryResponse, ApproveBotRequest, BotApprovalResponse, BanRequest,
+    BanResponse, JoinMemberResponse, ListAllowlistResponse, ListBansResponse, ListMembersResponse,
+    ListPendingBotsResponse, MemberWithRoles, RoleSummary,
 };
 use crate::permissions::{MemberUser, UserPermissions, ADMINISTRATOR, BAN_MEMBERS, KICK_MEMBERS, MANAGE_SERVER};
 use crate::storage::models::Member;
@@ -92,6 +93,7 @@ async fn member_to_response(
         pubkey: member.pubkey,
         display_name: member.display_name,
         avatar_hash: member.avatar_hash,
+        is_bot: member.is_bot,
         joined_at: member.joined_at,
         roles,
     })
@@ -480,5 +482,62 @@ pub(super) async fn remove_allowlist(
         .await
         .map_err(storage_err)?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub(super) async fn list_pending_bots(
+    State(state): State<AppState>,
+    auth: UserPermissions,
+) -> ApiResult<ListPendingBotsResponse> {
+    if !auth.has(MANAGE_SERVER) {
+        return Err(forbidden("missing manage_server permission"));
+    }
+
+    let bots = state
+        .storage
+        .list_pending_bots()
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(BotApprovalResponse::from)
+        .collect();
+
+    Ok(Json(ListPendingBotsResponse { bots }))
+}
+
+pub(super) async fn approve_bot(
+    State(state): State<AppState>,
+    auth: UserPermissions,
+    Path(pubkey): Path<String>,
+    Json(req): Json<ApproveBotRequest>,
+) -> ApiResult<BotApprovalResponse> {
+    if !auth.has(MANAGE_SERVER) {
+        return Err(forbidden("missing manage_server permission"));
+    }
+
+    let approval = state
+        .storage
+        .approve_bot(&pubkey, &auth.user_id, req.note.as_deref())
+        .await
+        .map_err(storage_err)?;
+
+    Ok(Json(BotApprovalResponse::from(approval)))
+}
+
+pub(super) async fn revoke_bot(
+    State(state): State<AppState>,
+    auth: UserPermissions,
+    Path(pubkey): Path<String>,
+) -> ApiResult<BotApprovalResponse> {
+    if !auth.has(MANAGE_SERVER) {
+        return Err(forbidden("missing manage_server permission"));
+    }
+
+    let approval = state
+        .storage
+        .revoke_bot(&pubkey)
+        .await
+        .map_err(storage_err)?;
+
+    Ok(Json(BotApprovalResponse::from(approval)))
 }
 

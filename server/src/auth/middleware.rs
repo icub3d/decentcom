@@ -12,6 +12,7 @@ use crate::AppState;
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub user_id: String,
+    pub is_read_only: bool,
 }
 
 #[derive(Debug)]
@@ -84,6 +85,7 @@ where
 
         Ok(AuthUser {
             user_id: session.user_id,
+            is_read_only: session.is_read_only,
         })
     }
 }

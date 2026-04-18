@@ -9,9 +9,11 @@ use crate::storage::traits::SessionStore;
 use crate::storage::StorageError;
 
 fn row_to_session(row: sqlx::sqlite::SqliteRow) -> Result<Session, StorageError> {
+    let is_read_only_int: i64 = row.try_get("is_read_only")?;
     Ok(Session {
         token: row.try_get("token")?,
         user_id: row.try_get("user_id")?,
+        is_read_only: is_read_only_int != 0,
         created_at: row.try_get::<DateTime<Utc>, _>("created_at")?,
         expires_at: row.try_get::<DateTime<Utc>, _>("expires_at")?,
     })
@@ -29,17 +31,21 @@ impl SessionStore for SqliteStorage {
         &self,
         user_id: &str,
         duration: Duration,
+        is_read_only: bool,
     ) -> Result<Session, StorageError> {
         let token = random_token();
         let expires_at: DateTime<Utc> = Utc::now()
             + ChronoDuration::from_std(duration)
                 .map_err(|e| StorageError::Internal(e.to_string()))?;
-        sqlx::query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
-            .bind(&token)
-            .bind(user_id)
-            .bind(expires_at)
-            .execute(self.pool())
-            .await?;
+        sqlx::query(
+            "INSERT INTO sessions (token, user_id, expires_at, is_read_only) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&token)
+        .bind(user_id)
+        .bind(expires_at)
+        .bind(is_read_only as i64)
+        .execute(self.pool())
+        .await?;
         self.get_session(&token)
             .await?
             .ok_or(StorageError::NotFound)
@@ -82,12 +88,13 @@ mod tests {
     #[tokio::test]
     async fn session_create_get_expire() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let u = s.create_user("pk", None).await.unwrap();
+        let u = s.create_user("pk", None, false).await.unwrap();
         let sess = s
-            .create_session(&u.id, Duration::from_secs(3600))
+            .create_session(&u.id, Duration::from_secs(3600), false)
             .await
             .unwrap();
         assert_eq!(sess.user_id, u.id);
+        assert!(!sess.is_read_only);
         assert!(sess.expires_at > Utc::now());
 
         let got = s.get_session(&sess.token).await.unwrap().unwrap();
@@ -95,25 +102,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn read_only_session_flag_is_stored() {
+        let s = SqliteStorage::in_memory().await.unwrap();
+        let u = s.create_user("pk-bot", None, true).await.unwrap();
+        let sess = s
+            .create_session(&u.id, Duration::from_secs(3600), true)
+            .await
+            .unwrap();
+        assert!(sess.is_read_only);
+    }
+
+    #[tokio::test]
     async fn delete_expired_sessions_only_removes_expired() {
         let s = SqliteStorage::in_memory().await.unwrap();
-        let u = s.create_user("pk", None).await.unwrap();
+        let u = s.create_user("pk", None, false).await.unwrap();
 
         let live = s
-            .create_session(&u.id, Duration::from_secs(3600))
+            .create_session(&u.id, Duration::from_secs(3600), false)
             .await
             .unwrap();
 
         // Insert an already-expired row directly to avoid needing a clock.
         let expired_token = ulid::Ulid::new().to_string();
         let past = Utc::now() - ChronoDuration::hours(1);
-        sqlx::query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
-            .bind(&expired_token)
-            .bind(&u.id)
-            .bind(past)
-            .execute(s.pool())
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO sessions (token, user_id, expires_at, is_read_only) VALUES (?, ?, ?, 0)",
+        )
+        .bind(&expired_token)
+        .bind(&u.id)
+        .bind(past)
+        .execute(s.pool())
+        .await
+        .unwrap();
 
         let removed = s.delete_expired_sessions().await.unwrap();
         assert_eq!(removed, 1);

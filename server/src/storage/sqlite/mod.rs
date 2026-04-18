@@ -1,4 +1,5 @@
 mod attachments;
+mod bots;
 mod channels;
 mod invites;
 mod media;
