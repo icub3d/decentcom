@@ -476,9 +476,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           };
         }
         case "MEMBER_JOIN": {
-          const member = event.d as { user_id: string; pubkey: string; roles: string[]; joined_at: string };
+          const member = event.d as { user_id: string; pubkey: string; roles?: string[]; joined_at: string };
           const existing = state.memberRoleIdsByUserId[member.user_id] ?? [];
-          const merged = Array.from(new Set([...existing, ...member.roles]));
+          const merged = Array.from(new Set([...existing, ...(member.roles ?? [])]));
           useMembersStore.getState().applyGatewayEvent(event);
           return {
             memberRoleIdsByUserId: {

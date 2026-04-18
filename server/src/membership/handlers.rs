@@ -200,7 +200,9 @@ pub(super) async fn join_member(
             serde_json::json!({
                 "user_id": user.id,
                 "pubkey": user.pubkey,
+                "is_bot": user.is_bot,
                 "joined_at": Utc::now(),
+                "roles": [],
             }),
         ) {
             state.gateway.broadcast_all(&msg);
@@ -531,7 +533,9 @@ pub(super) async fn approve_bot(
                 serde_json::json!({
                     "user_id": user.id,
                     "pubkey": user.pubkey,
+                    "is_bot": user.is_bot,
                     "joined_at": Utc::now(),
+                    "roles": [],
                 }),
             ) {
                 state.gateway.broadcast_all(&msg);
