@@ -47,10 +47,10 @@ export function TitleBar() {
         <button
           onClick={() => setShowAbout(true)}
           data-tauri-no-drag
-          className="px-3 h-full flex items-center justify-center hover:bg-ctp-surface0 transition-colors text-ctp-subtext1 hover:text-ctp-text text-xs"
+          className="w-8 h-full flex items-center justify-center hover:bg-ctp-surface0 transition-colors text-ctp-subtext1 hover:text-ctp-text text-sm"
           title="About decentcom"
         >
-          About
+          ⓘ
         </button>
         <button
           onClick={handleMinimize}
