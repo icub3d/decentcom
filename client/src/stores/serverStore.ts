@@ -6,6 +6,7 @@ import type { Attachment } from "../api/media";
 import type { ReactionSummary } from "../api/reactions";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
+import { getServerInfo } from "../api/server";
 import { ApiError, apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
@@ -85,6 +86,7 @@ export interface ServerStore {
   status: ConnectionStatus;
   sessionToken: string | null;
   sessionUserId: string | null;
+  membershipMode: string;
   channels: Channel[];
   roles: Role[];
   memberRoleIdsByUserId: Record<string, string[]>;
@@ -143,6 +145,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   status: "disconnected",
   sessionToken: null,
   sessionUserId: null,
+  membershipMode: "",
   channels: [],
   roles: [],
   memberRoleIdsByUserId: {},
@@ -159,8 +162,15 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     set({ status: "connecting", error: null, address: normalized, serverId: normalized });
 
     try {
-      const session = await authenticateServer(normalized);
-      set({ sessionToken: session.token, sessionUserId: session.userId });
+      const [session, serverInfo] = await Promise.all([
+        authenticateServer(normalized),
+        getServerInfo(normalized),
+      ]);
+      set({
+        sessionToken: session.token,
+        sessionUserId: session.userId,
+        membershipMode: serverInfo.membership_mode,
+      });
 
       let channelData;
       try {

@@ -434,10 +434,7 @@ pub static OPEN: ServerConfig = ServerConfig {
     ],
     invites: &[],
     allowlist: &[],
-    bots: &[BotSeed {
-        name: "bot-alpha",
-        approved_by: "alice",
-    }],
+    bots: &[BotSeed { name: "bot-alpha" }],
 };
 
 pub static PRIVATE: ServerConfig = ServerConfig {

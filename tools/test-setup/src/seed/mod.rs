@@ -137,7 +137,6 @@ pub struct AllowlistEntry {
 
 pub struct BotSeed {
     pub name: &'static str,
-    pub approved_by: &'static str,
 }
 
 pub struct ServerConfig {

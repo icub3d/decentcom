@@ -52,6 +52,7 @@ function initials(name: string | undefined, address: string): string {
 export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwitchAccount }: ServerSidebarProps) {
   const { theme, setTheme, setCurrentServer, removeServer } = useAppStore();
   const address = useServerStore((state) => state.address);
+  const membershipMode = useServerStore((state) => state.membershipMode);
 
   const token = useServerStore((state) => state.sessionToken);
   const roles = useServerStore((state) => state.roles);
@@ -214,7 +215,7 @@ export function ServerSidebar({ servers, currentServerId, onSelectServer, onSwit
       {openPanel === "server-settings" && showServerSettings && (
         <div className="absolute bottom-3 left-20 z-10 w-104 pl-2">
           <div className="grid gap-3">
-            <MembershipSettings mode="server-config" />
+            <MembershipSettings mode={membershipMode} />
             {canManageInvites && (
               <>
                 <CreateInviteDialog
