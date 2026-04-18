@@ -2,15 +2,19 @@ import { create } from "zustand";
 
 import {
   addAllowlist,
+  approveBot,
   banMember,
   kickMember,
   listAllowlist,
   listBans,
   listMembers,
+  listPendingBots,
   removeAllowlist,
+  revokeBot,
   unbanMember,
   type AllowlistEntry,
   type Ban,
+  type BotApproval,
   type Member,
 } from "../api/members";
 
@@ -18,16 +22,20 @@ interface MembersStore {
   members: Member[];
   bans: Ban[];
   allowlist: AllowlistEntry[];
+  pendingBots: BotApproval[];
   loading: boolean;
   error: string | null;
   fetchMembers: (baseUrl: string, token: string) => Promise<void>;
   fetchBans: (baseUrl: string, token: string) => Promise<void>;
   fetchAllowlist: (baseUrl: string, token: string) => Promise<void>;
+  fetchPendingBots: (baseUrl: string, token: string) => Promise<void>;
   kick: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   ban: (baseUrl: string, token: string, pubkey: string, reason?: string) => Promise<void>;
   unban: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   addAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   removeAllowlistEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
+  approveBotEntry: (baseUrl: string, token: string, pubkey: string, note?: string) => Promise<void>;
+  revokeBotEntry: (baseUrl: string, token: string, pubkey: string) => Promise<void>;
   updateMemberProfile: (
     userId: string,
     patch: { display_name?: string | null; avatar_hash?: string | null },
@@ -40,6 +48,7 @@ export const useMembersStore = create<MembersStore>((set) => ({
   members: [],
   bans: [],
   allowlist: [],
+  pendingBots: [],
   loading: false,
   error: null,
 
@@ -101,6 +110,27 @@ export const useMembersStore = create<MembersStore>((set) => ({
   removeAllowlistEntry: async (baseUrl, token, pubkey) => {
     await removeAllowlist(baseUrl, token, pubkey);
     set((state) => ({ allowlist: state.allowlist.filter((entry) => entry.pubkey !== pubkey) }));
+  },
+
+  fetchPendingBots: async (baseUrl, token) => {
+    set({ loading: true, error: null });
+    try {
+      const pendingBots = await listPendingBots(baseUrl, token);
+      set({ pendingBots, loading: false });
+    } catch (error) {
+      set({ loading: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+
+  approveBotEntry: async (baseUrl, token, pubkey, note) => {
+    await approveBot(baseUrl, token, pubkey, note);
+    set((state) => ({
+      pendingBots: state.pendingBots.filter((bot) => bot.pubkey !== pubkey),
+    }));
+  },
+
+  revokeBotEntry: async (baseUrl, token, pubkey) => {
+    await revokeBot(baseUrl, token, pubkey);
   },
 
   updateMemberProfile: (userId, patch) => {
@@ -176,6 +206,6 @@ export const useMembersStore = create<MembersStore>((set) => ({
   },
 
   clear: () => {
-    set({ members: [], bans: [], allowlist: [], loading: false, error: null });
+    set({ members: [], bans: [], allowlist: [], pendingBots: [], loading: false, error: null });
   },
 }));

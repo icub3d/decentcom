@@ -55,6 +55,9 @@ export function MessageItem({ message, isReply }: MessageItemProps) {
           <div className="mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-ctp-subtext0">
               <span className="font-semibold text-ctp-subtext1">{displayName}</span>
+              {member?.is_bot && (
+                <span className="rounded bg-ctp-blue/20 px-1 py-0.5 text-[10px] font-bold text-ctp-blue">BOT</span>
+              )}
               <time>{formatTime(message.created_at)}</time>
               {message.edited_at && !message.deleted && <span className="text-ctp-yellow">(edited)</span>}
             </div>
