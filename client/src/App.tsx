@@ -26,7 +26,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
-  const { connect, status } = useServerStore();
+  const { connect, status, address } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -90,11 +90,12 @@ function App() {
         currentServerId,
         status,
         connectLoading,
+        address,
       })
     ) {
       handleConnect(currentServerId!);
     }
-  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, address]);
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);

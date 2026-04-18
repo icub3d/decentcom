@@ -156,6 +156,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
   connect: async (address: string) => {
     const normalized = normalizeAddress(address);
+    if (get().address && get().address !== normalized) {
+      get().disconnect();
+    }
     set({ status: "connecting", error: null, address: normalized, serverId: normalized });
 
     try {
