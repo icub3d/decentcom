@@ -5,7 +5,6 @@ use axum_extra::extract::Multipart;
 use serde::{Deserialize, Serialize};
 use shared::gateway::Op;
 
-use crate::auth::middleware::AuthUser;
 use crate::gateway::events::event_json;
 use crate::permissions::MemberUser;
 use crate::profiles::avatar::{process_and_store_avatar, AvatarError};
@@ -84,7 +83,7 @@ pub struct UpdateProfileRequest {
 /// PATCH /profile — update own display name.
 pub(super) async fn update_profile(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: MemberUser,
     Json(req): Json<UpdateProfileRequest>,
 ) -> ApiResult<ProfileResponse> {
     let display_name = req
@@ -118,7 +117,7 @@ pub(super) async fn update_profile(
 /// PUT /profile/avatar — upload or replace own avatar.
 pub(super) async fn upload_avatar(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: MemberUser,
     mut multipart: Multipart,
 ) -> ApiResult<ProfileResponse> {
     let field = multipart
@@ -157,7 +156,7 @@ pub(super) async fn upload_avatar(
 /// DELETE /profile/avatar — remove own avatar.
 pub(super) async fn delete_avatar(
     State(state): State<AppState>,
-    auth: AuthUser,
+    auth: MemberUser,
 ) -> ApiResult<ProfileResponse> {
     let user = state
         .storage

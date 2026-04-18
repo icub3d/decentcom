@@ -30,6 +30,7 @@ pub struct ServerIdentity {
 #[serde(default, deny_unknown_fields)]
 pub struct NetworkConfig {
     pub bind_address: SocketAddr,
+    pub allowed_origins: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -111,6 +112,7 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             bind_address: "127.0.0.1:8080".parse().expect("valid default addr"),
+            allowed_origins: Vec::new(),
         }
     }
 }

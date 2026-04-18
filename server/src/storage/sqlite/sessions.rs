@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use rand::RngCore;
 use sqlx::Row;
 use std::time::Duration;
 
@@ -18,9 +19,9 @@ fn row_to_session(row: sqlx::sqlite::SqliteRow) -> Result<Session, StorageError>
 }
 
 fn random_token() -> String {
-    // Use ULID as an opaque random-ish token. Secure token generation will
-    // be revisited by the auth feature.
-    ulid::Ulid::new().to_string()
+    let mut bytes = [0u8; 16];
+    rand::rng().fill_bytes(&mut bytes);
+    hex::encode(bytes)
 }
 
 #[async_trait]
