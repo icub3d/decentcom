@@ -18,11 +18,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::http::{header, Method};
+use axum::http::{header, HeaderValue, Method};
 use axum::{extract::State, routing::get, Json, Router};
 use clap::Parser;
 use shared::HealthStatus;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::{info, warn};
 
 use crate::config::{ServerConfig, StorageBackendType};
@@ -45,6 +45,7 @@ pub struct AppState {
 }
 
 pub fn app(state: AppState) -> Router {
+    let cors = cors_layer(&state.config.network.allowed_origins);
     Router::new()
         .route("/health", get(health))
         .nest("/api/v1", channels::router())
@@ -59,15 +60,22 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1", threads::router())
         .nest("/api/v1/auth", auth::router())
         .nest("/api/v1/gateway", gateway::router())
-        .layer(cors_layer())
+        .layer(cors)
         .with_state(state)
 }
 
-fn cors_layer() -> CorsLayer {
-    // Tauri WebView requests originate from non-http origins; allow REST calls
-    // in development until we add a stricter per-origin server config.
+fn cors_layer(allowed_origins: &[String]) -> CorsLayer {
+    let origin = if allowed_origins.is_empty() {
+        AllowOrigin::any()
+    } else {
+        let values: Vec<HeaderValue> = allowed_origins
+            .iter()
+            .filter_map(|o| o.parse().ok())
+            .collect();
+        AllowOrigin::list(values)
+    };
     CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(origin)
         .allow_methods([
             Method::GET,
             Method::POST,
