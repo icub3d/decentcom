@@ -35,12 +35,16 @@ export class GatewayClient {
   connect() {
     const state = this.getState();
     if (!state.address || !state.sessionToken) {
+      console.log("[Gateway] connect skipped (missing address or token)");
       return;
     }
 
     if (this.socket && this.socket.readyState <= WebSocket.OPEN) {
+      console.log("[Gateway] connect skipped (socket already open or connecting)");
       return;
     }
+
+    console.log("[Gateway] connect start", { address: state.address, attempt: this.reconnectAttempt });
 
     if (this.reconnectAttempt > 0) {
       this.getState().setStatus("reconnecting");
@@ -52,17 +56,20 @@ export class GatewayClient {
     this.socket = new WebSocket(url.toString());
 
     this.socket.onopen = () => {
+      console.log("[Gateway] socket onopen");
       const wasReconnect = this.wasConnected;
       this.reconnectAttempt = 0;
       this.wasConnected = true;
       this.getState().setStatus("connected");
 
       if (wasReconnect) {
+        console.log("[Gateway] was reconnection, revalidating...");
         void this.getState().revalidate();
       }
 
       const channelId = this.getState().currentChannelId;
       if (channelId) {
+        console.log("[Gateway] subscribing to initial channel", channelId);
         this.subscribe(channelId);
       }
     };
@@ -80,17 +87,21 @@ export class GatewayClient {
       }
     };
 
-    this.socket.onclose = () => {
+    this.socket.onclose = (event) => {
+      console.log("[Gateway] socket onclose", { code: event.code, reason: event.reason, wasClean: event.wasClean });
       this.socket = null;
       if (this.shouldReconnect) {
+        console.log("[Gateway] scheduling reconnect...");
         this.getState().setStatus("reconnecting");
         this.scheduleReconnect();
       } else {
+        console.log("[Gateway] shouldReconnect is false, setting status to disconnected");
         this.getState().setStatus("disconnected");
       }
     };
 
-    this.socket.onerror = () => {
+    this.socket.onerror = (error) => {
+      console.error("[Gateway] socket onerror", error);
       // onerror is always followed by onclose, so no status change needed here.
     };
   }

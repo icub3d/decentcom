@@ -75,33 +75,37 @@ function App() {
   }, [status]);
 
   const handleConnect = useCallback(async (address: string) => {
+    console.log("[App] handleConnect start", { address });
     setConnectLoading(true);
     setConnectError(null);
     try {
       const info = await getServerInfo(address);
+      console.log("[App] handleConnect server info fetched", info.name);
       await connect(address);
       addServer(address, info.name);
       setRetryCount(0);
+      console.log("[App] handleConnect success");
     } catch (err) {
+      console.error("[App] handleConnect failed", err);
       setConnectError(err instanceof Error ? err.message : String(err));
       setRetryCount((prev) => prev + 1);
     } finally {
       setConnectLoading(false);
     }
   }, [connect, addServer]);
+// Auto-connect: gated by isSwitching to prevent races during account transitions.
+useEffect(() => {
+  const should = shouldAutoConnect({
+    hasIdentity: !!hasIdentity,
+    loading,
+    currentServerId,
+    status,
+    connectLoading,
+  });
 
-  // Auto-connect: gated by isSwitching to prevent races during account transitions.
-  useEffect(() => {
-    if (
-      shouldAutoConnect({
-        hasIdentity: !!hasIdentity,
-        loading,
-        currentServerId,
-        status,
-        connectLoading,
-      }) &&
-      !connectError // Don't auto-retry if there was an error (wait for backoff or manual)
-    ) {
+  if (should && !connectError) {
+
+      console.log("[App] Triggering auto-connect", { currentServerId, status });
       handleConnect(currentServerId!);
     }
   }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, connectError]);
@@ -120,13 +124,11 @@ function App() {
       // More conservative backoff: 2s, 4s, 8s, 16s, max 60s
       // We start at 2s to give the OS and server time to settle.
       const delay = Math.min(Math.pow(2, retryCount) * 1000, 60000);
+      console.log("[App] Scheduling auto-retry", { retryCount, delay });
       
       const timer = setTimeout(() => {
-        // Only clear the error if it's likely a temporary network issue.
-        // For other errors (like invalid credentials or user cancellation),
-        // we might want the user to click manual retry instead.
-        // For now, let's just clear it but with a longer delay.
-        setConnectError(null);
+        console.log("[App] Executing auto-retry (clearing error)");
+        setConnectError(null); // Clear error to trigger auto-connect effect
       }, delay);
       return () => clearTimeout(timer);
     }
