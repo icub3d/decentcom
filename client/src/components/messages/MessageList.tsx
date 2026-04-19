@@ -6,10 +6,11 @@ import { MessageItem } from "./MessageItem";
 interface MessageListProps {
   messages: Message[];
   hasMore: boolean;
+  loading: boolean;
   onLoadMore: () => Promise<void>;
 }
 
-export function MessageList({ messages, hasMore, onLoadMore }: MessageListProps) {
+export function MessageList({ messages, hasMore, loading, onLoadMore }: MessageListProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const shouldStickToBottomRef = useRef(true);
@@ -31,7 +32,7 @@ export function MessageList({ messages, hasMore, onLoadMore }: MessageListProps)
     const distanceToBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
     shouldStickToBottomRef.current = distanceToBottom < 48;
 
-    if (scroller.scrollTop > 20 || !hasMore || loadingMoreRef.current) {
+    if (scroller.scrollTop > 20 || !hasMore || loadingMoreRef.current || loading) {
       return;
     }
 
@@ -53,10 +54,14 @@ export function MessageList({ messages, hasMore, onLoadMore }: MessageListProps)
       onScroll={handleScroll}
       className="h-full overflow-y-auto px-4 py-3 space-y-3"
     >
-      {hasMore && (
+      {hasMore && !loading && (
         <div className="text-center text-xs text-ctp-subtext0">Scroll up to load older messages</div>
       )}
-      {ordered.length === 0 ? (
+      {loading && ordered.length === 0 ? (
+        <div className="flex items-center justify-center p-6 text-ctp-subtext0">
+          <div className="animate-pulse">Loading messages...</div>
+        </div>
+      ) : ordered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-ctp-overlay0 p-6 text-center text-ctp-subtext0">
           No messages yet.
         </div>

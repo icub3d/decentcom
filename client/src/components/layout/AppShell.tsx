@@ -22,6 +22,7 @@ export function AppShell({ onSwitchAccount }: AppShellProps) {
     currentChannelId,
     messages,
     hasMore,
+    loadingMessages,
     status,
     roles,
     memberRoleIdsByUserId,
@@ -80,6 +81,7 @@ export function AppShell({ onSwitchAccount }: AppShellProps) {
   const currentChannel = channels.find((ch) => ch.id === currentChannelId) ?? null;
   const channelMessages = currentChannelId ? messages[currentChannelId] ?? [] : [];
   const channelHasMore = currentChannelId ? hasMore[currentChannelId] ?? false : false;
+  const channelLoading = currentChannelId ? !!loadingMessages[currentChannelId] : false;
 
   return (
     <main className="flex-1 h-full bg-ctp-crust text-ctp-text flex overflow-hidden">
@@ -101,6 +103,7 @@ export function AppShell({ onSwitchAccount }: AppShellProps) {
         channel={currentChannel}
         messages={channelMessages}
         hasMore={channelHasMore}
+        loading={channelLoading}
         connected={status === "connected"}
         onLoadMore={() =>
           currentChannelId ? loadMoreMessages(currentChannelId) : Promise.resolve()

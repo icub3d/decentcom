@@ -6,7 +6,6 @@ import type { Attachment } from "../api/media";
 import type { ReactionSummary } from "../api/reactions";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
-import { getServerInfo } from "../api/server";
 import { ApiError, apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
@@ -86,7 +85,6 @@ export interface ServerStore {
   status: ConnectionStatus;
   sessionToken: string | null;
   sessionUserId: string | null;
-  membershipMode: string;
   channels: Channel[];
   roles: Role[];
   memberRoleIdsByUserId: Record<string, string[]>;
@@ -94,6 +92,7 @@ export interface ServerStore {
   currentChannelId: string | null;
   messages: Record<string, Message[]>;
   hasMore: Record<string, boolean>;
+  loadingMessages: Record<string, boolean>;
   replyingTo: Message | null;
   error: string | null;
   gateway: GatewayClient | null;
@@ -145,7 +144,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   status: "disconnected",
   sessionToken: null,
   sessionUserId: null,
-  membershipMode: "",
   channels: [],
   roles: [],
   memberRoleIdsByUserId: {},
@@ -153,27 +151,28 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   currentChannelId: null,
   messages: {},
   hasMore: {},
+  loadingMessages: {},
   replyingTo: null,
   error: null,
   gateway: null,
 
   connect: async (address: string) => {
     const normalized = normalizeAddress(address);
-    if (get().address && get().address !== normalized) {
-      get().disconnect();
-    }
-    set({ status: "connecting", error: null, address: normalized, serverId: normalized });
+    set({
+      status: "connecting",
+      error: null,
+      address: normalized,
+      serverId: normalized,
+      channels: [],
+      messages: {},
+      hasMore: {},
+      loadingMessages: {},
+      currentChannelId: null,
+    });
 
     try {
-      const [session, serverInfo] = await Promise.all([
-        authenticateServer(normalized),
-        getServerInfo(normalized),
-      ]);
-      set({
-        sessionToken: session.token,
-        sessionUserId: session.userId,
-        membershipMode: serverInfo.membership_mode,
-      });
+      const session = await authenticateServer(normalized);
+      set({ sessionToken: session.token, sessionUserId: session.userId });
 
       let channelData;
       try {
@@ -246,6 +245,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       currentChannelId: null,
       messages: {},
       hasMore: {},
+      loadingMessages: {},
     });
   },
 
@@ -320,35 +320,56 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
   loadMoreMessages: async (channelId: string) => {
     const state = get();
-    if (!state.sessionToken) {
+    if (!state.sessionToken || state.loadingMessages[channelId]) {
       return;
     }
 
-    const existing = state.messages[channelId] ?? [];
-    const oldestId = existing.at(-1)?.id;
-    const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
-
-    const page = await apiRequest<MessagePage>(
-      state.address,
-      `/api/v1/channels/${channelId}/messages${query}`,
-      {
-        token: state.sessionToken,
+    set((prev) => ({
+      loadingMessages: {
+        ...prev.loadingMessages,
+        [channelId]: true,
       },
-    );
+    }));
 
-    set((prev) => {
-      const current = prev.messages[channelId] ?? [];
-      return {
-        messages: {
-          ...prev.messages,
-          [channelId]: mergeMessages(current, page.messages),
+    try {
+      const existing = state.messages[channelId] ?? [];
+      const oldestId = existing.at(-1)?.id;
+      const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
+
+      const page = await apiRequest<MessagePage>(
+        state.address,
+        `/api/v1/channels/${channelId}/messages${query}`,
+        {
+          token: state.sessionToken,
         },
-        hasMore: {
-          ...prev.hasMore,
-          [channelId]: page.has_more,
+      );
+
+      set((prev) => {
+        const current = prev.messages[channelId] ?? [];
+        return {
+          messages: {
+            ...prev.messages,
+            [channelId]: mergeMessages(current, page.messages),
+          },
+          hasMore: {
+            ...prev.hasMore,
+            [channelId]: page.has_more,
+          },
+          loadingMessages: {
+            ...prev.loadingMessages,
+            [channelId]: false,
+          },
+        };
+      });
+    } catch (error) {
+      set((prev) => ({
+        loadingMessages: {
+          ...prev.loadingMessages,
+          [channelId]: false,
         },
-      };
-    });
+      }));
+      throw error;
+    }
   },
 
   createChannel: async (req: CreateChannelRequest) => {
@@ -479,9 +500,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           };
         }
         case "MEMBER_JOIN": {
-          const member = event.d as { user_id: string; pubkey: string; roles?: string[]; joined_at: string };
+          const member = event.d as { user_id: string; pubkey: string; roles: string[]; joined_at: string };
           const existing = state.memberRoleIdsByUserId[member.user_id] ?? [];
-          const merged = Array.from(new Set([...existing, ...(member.roles ?? [])]));
+          const merged = Array.from(new Set([...existing, ...member.roles]));
           useMembersStore.getState().applyGatewayEvent(event);
           return {
             memberRoleIdsByUserId: {
