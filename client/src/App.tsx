@@ -75,37 +75,32 @@ function App() {
   }, [status]);
 
   const handleConnect = useCallback(async (address: string) => {
-    console.log("[App] handleConnect start", { address });
     setConnectLoading(true);
     setConnectError(null);
     try {
       const info = await getServerInfo(address);
-      console.log("[App] handleConnect server info fetched", info.name);
       await connect(address);
       addServer(address, info.name);
       setRetryCount(0);
-      console.log("[App] handleConnect success");
     } catch (err) {
-      console.error("[App] handleConnect failed", err);
       setConnectError(err instanceof Error ? err.message : String(err));
       setRetryCount((prev) => prev + 1);
     } finally {
       setConnectLoading(false);
     }
   }, [connect, addServer]);
-// Auto-connect: gated by isSwitching to prevent races during account transitions.
-useEffect(() => {
-  const should = shouldAutoConnect({
-    hasIdentity: !!hasIdentity,
-    loading,
-    currentServerId,
-    status,
-    connectLoading,
-  });
 
-  if (should && !connectError) {
+  // Auto-connect: gated by isSwitching to prevent races during account transitions.
+  useEffect(() => {
+    const should = shouldAutoConnect({
+      hasIdentity: !!hasIdentity,
+      loading,
+      currentServerId,
+      status,
+      connectLoading,
+    });
 
-      console.log("[App] Triggering auto-connect", { currentServerId, status });
+    if (should && !connectError) {
       handleConnect(currentServerId!);
     }
   }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, connectError]);
@@ -124,15 +119,14 @@ useEffect(() => {
       // More conservative backoff: 2s, 4s, 8s, 16s, max 60s
       // We start at 2s to give the OS and server time to settle.
       const delay = Math.min(Math.pow(2, retryCount) * 1000, 60000);
-      console.log("[App] Scheduling auto-retry", { retryCount, delay });
-      
+
       const timer = setTimeout(() => {
-        console.log("[App] Executing auto-retry (clearing error)");
         setConnectError(null); // Clear error to trigger auto-connect effect
       }, delay);
       return () => clearTimeout(timer);
     }
   }, [retryCount, status, connectLoading, currentServerId, isSwitching, connectError, authError]);
+
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);

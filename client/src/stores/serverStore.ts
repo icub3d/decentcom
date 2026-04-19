@@ -161,7 +161,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   connect: async (address: string) => {
     const normalized = normalizeAddress(address);
     const isNewServer = get().address !== normalized;
-    console.log("[serverStore] connect start", { address: normalized, isNewServer });
 
     set({
       status: "connecting",
@@ -173,7 +172,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     });
 
     if (isNewServer) {
-      console.log("[serverStore] Clearing state for new server");
       set({
         channels: [],
         messages: {},
@@ -183,20 +181,16 @@ export const useServerStore = create<ServerStore>((set, get) => ({
     }
 
     try {
-      console.log("[serverStore] Authenticating...");
       const session = await authenticateServer(normalized);
-      console.log("[serverStore] Authenticated", { userId: session.userId });
       set({ sessionToken: session.token, sessionUserId: session.userId });
 
       let channelData;
       try {
-        console.log("[serverStore] Fetching channels...");
         channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
           token: session.token,
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 403 && error.message.includes("membership required")) {
-          console.log("[serverStore] Membership required, joining...");
           await joinServer(normalized, session.token);
           channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
             token: session.token,
@@ -205,7 +199,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           throw error;
         }
       }
-      console.log("[serverStore] Channels fetched", channelData.channels.length);
 
       const roleData = await listRoles(normalized, session.token);
       await useMembersStore.getState().fetchMembers(normalized, session.token);
@@ -217,7 +210,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       }
 
       const firstChannelId = channelData.channels[0]?.id ?? null;
-      console.log("[serverStore] Connection data ready", { firstChannelId });
 
       set({
         channels: sortChannels(channelData.channels),
@@ -227,17 +219,14 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
       const gateway = get().gateway ?? new GatewayClient(get);
       set({ gateway });
-      console.log("[serverStore] Connecting gateway...");
       gateway.reconnect();
 
       if (firstChannelId) {
-        console.log("[serverStore] Loading messages for initial channel", firstChannelId);
         set({ currentChannelId: firstChannelId });
         await get().loadMoreMessages(firstChannelId);
       }
 
       set({ status: "connected" });
-      console.log("[serverStore] connect complete");
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       const isAuthError =
@@ -247,8 +236,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         msg.toLowerCase().includes("secure storage") ||
         msg.toLowerCase().includes("dbus");
       
-      console.error("[serverStore] connect failed", { msg, isAuthError });
-
       set({
         status: "disconnected",
         error: msg,
