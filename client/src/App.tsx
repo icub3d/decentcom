@@ -26,7 +26,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
-  const { connect, status, authError } = useServerStore();
+  const { connect, status, authError, address } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -98,12 +98,13 @@ function App() {
       currentServerId,
       status,
       connectLoading,
+      address,
     });
 
     if (should && !connectError) {
       handleConnect(currentServerId!);
     }
-  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, connectError]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, address, handleConnect, isSwitching, shouldAutoConnect, connectError]);
 
   // Auto-retry with backoff
   useEffect(() => {

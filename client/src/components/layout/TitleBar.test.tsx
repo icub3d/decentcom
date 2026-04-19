@@ -21,9 +21,9 @@ describe("TitleBar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders with correct title", () => {
+  it("renders with correct logo", () => {
     render(<TitleBar />);
-    expect(screen.getByText("decentcom")).toBeInTheDocument();
+    expect(screen.getByLabelText("decentcom")).toBeInTheDocument();
   });
 
   it("calls minimize when minimize button is clicked", () => {

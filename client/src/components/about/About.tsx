@@ -1,5 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Modal } from "../ui/Modal";
+import { Logo } from "../ui/Logo";
 
 interface AboutProps {
   onClose: () => void;
@@ -31,15 +32,20 @@ export function About({ onClose }: AboutProps) {
   return (
     <Modal onClose={onClose}>
       <div className="w-full max-w-lg p-8 space-y-6 text-ctp-text">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ctp-text">About decentcom</h2>
-          <button
-            onClick={onClose}
-            className="text-ctp-subtext1 hover:text-ctp-text transition-colors text-lg leading-none"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+        <div className="flex items-center gap-4">
+          <Logo size={48} />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-ctp-text">About decentcom</h2>
+              <button
+                onClick={onClose}
+                className="text-ctp-subtext1 hover:text-ctp-text transition-colors text-lg leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
         </div>
 
         <p className="text-ctp-subtext1 leading-relaxed">

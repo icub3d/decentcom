@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import { About } from "../about/About";
+import { Logo } from "../ui/Logo";
 
 const appWindow = getCurrentWindow();
 
@@ -40,7 +41,7 @@ export function TitleBar() {
       className="h-8 bg-ctp-crust flex items-center justify-between select-none border-b border-ctp-overlay0"
     >
       <div className="flex items-center px-4 gap-2 pointer-events-none">
-        <span className="text-xs font-bold text-ctp-subtext1">decentcom</span>
+        <Logo size={18} />
       </div>
 
       <div className="flex items-center h-full">
