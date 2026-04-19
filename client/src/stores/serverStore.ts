@@ -95,6 +95,7 @@ export interface ServerStore {
   loadingMessages: Record<string, boolean>;
   replyingTo: Message | null;
   error: string | null;
+  authError: boolean;
   gateway: GatewayClient | null;
 
   connect: (address: string) => Promise<void>;
@@ -154,21 +155,30 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   loadingMessages: {},
   replyingTo: null,
   error: null,
+  authError: false,
   gateway: null,
 
   connect: async (address: string) => {
     const normalized = normalizeAddress(address);
+    const isNewServer = get().address !== normalized;
+
     set({
       status: "connecting",
       error: null,
+      authError: false,
       address: normalized,
       serverId: normalized,
-      channels: [],
-      messages: {},
-      hasMore: {},
-      loadingMessages: {},
-      currentChannelId: null,
     });
+
+    if (isNewServer) {
+      set({
+        channels: [],
+        messages: {},
+        hasMore: {},
+        loadingMessages: {},
+        currentChannelId: null,
+      });
+    }
 
     try {
       const session = await authenticateServer(normalized);
@@ -219,14 +229,18 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         await get().loadMoreMessages(firstChannelId);
       }
 
-      set({ status: "connected" });
+      // We don't explicitly set status to "connected" here because the gateway
+      // will do it when the socket opens. If we set it here, we might overwrite
+      // a "reconnecting" status from the gateway if it's already struggling.
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        set({ status: "disconnected", error: error.message, sessionToken: null, sessionUserId: null });
-        throw error;
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      set({ status: "disconnected", error: message, sessionToken: null, sessionUserId: null });
+      const isAuthError = error instanceof ApiError && error.status === 403;
+      set({
+        status: "disconnected",
+        error: error instanceof Error ? error.message : String(error),
+        authError: isAuthError,
+        sessionToken: null,
+        sessionUserId: null,
+      });
       throw error;
     }
   },

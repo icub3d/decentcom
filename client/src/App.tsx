@@ -26,7 +26,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
-  const { connect, status } = useServerStore();
+  const { connect, status, authError } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -113,16 +113,24 @@ function App() {
       status === "disconnected" &&
       !connectLoading &&
       currentServerId &&
-      !isSwitching
+      !isSwitching &&
+      connectError &&
+      !authError // NEVER auto-retry if it's an authentication error (prevent keychain loops)
     ) {
-      // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-      const delay = Math.min(Math.pow(2, retryCount - 1) * 1000, 30000);
+      // More conservative backoff: 2s, 4s, 8s, 16s, max 60s
+      // We start at 2s to give the OS and server time to settle.
+      const delay = Math.min(Math.pow(2, retryCount) * 1000, 60000);
+      
       const timer = setTimeout(() => {
-        setConnectError(null); // Clear error to trigger auto-connect effect
+        // Only clear the error if it's likely a temporary network issue.
+        // For other errors (like invalid credentials or user cancellation),
+        // we might want the user to click manual retry instead.
+        // For now, let's just clear it but with a longer delay.
+        setConnectError(null);
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [retryCount, status, connectLoading, currentServerId, isSwitching]);
+  }, [retryCount, status, connectLoading, currentServerId, isSwitching, connectError, authError]);
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);
