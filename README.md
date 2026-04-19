@@ -56,17 +56,31 @@ decentcom/
 
 ## Development
 
-The fastest way to develop both the client and server is using [Overmind](https://github.com/DarthSim/overmind). We have a `Procfile` configured to run three different test servers simultaneously:
+Local development runs three test servers, a one-shot seeder, and the Tauri client together under [Overmind](https://github.com/DarthSim/overmind). Orchestration is wrapped in a Makefile.
 
 - **Open Server** (port 8081): Open membership mode.
 - **Private Server** (port 8082): Invite-only mode.
 - **Strict Server** (port 8083): Allowlist mode, restricted features.
+- **Seed**: `tools/sdk-seed` — runs once after the servers come up and populates each one with channels, members, messages, etc., via the public REST API (using `decentcom-sdk`).
 - **Client**: The Tauri dev server with hot reload.
 
-To start everything:
+### First run
+
 ```bash
-overmind start
+make clean   # remove test DBs, WebView storage, and OS keychain entries
+make setup   # install client deps, stage keychain entries + WebView localStorage
+make dev     # start the 3 servers, run the seeder, then start the client
 ```
+
+`make dev` keeps everything in one attached overmind session. The seeder is one-shot — it exits cleanly once seeding finishes (`OVERMIND_CAN_DIE=seed` keeps the rest of the session alive).
+
+### Other targets
+
+- `make servers` — start only the 3 test servers (no seeder, no client).
+- `make seed` — re-run the SDK seeder against already-running servers.
+- `make client` — start only the Tauri client.
+- `make test` / `make lint` / `make build` — run the workspace tests, clippy + ESLint, or `cargo build`.
+- `make help` — list every target.
 
 ### Tips
 - **Inspect one server**: `overmind connect private`
