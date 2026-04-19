@@ -104,7 +104,7 @@ function App() {
     if (should && !connectError) {
       handleConnect(currentServerId!);
     }
-  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, connectError]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, address, handleConnect, isSwitching, shouldAutoConnect, connectError]);
 
   // Auto-retry with backoff
   useEffect(() => {
