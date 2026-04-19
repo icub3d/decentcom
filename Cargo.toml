@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["server", "shared", "sdk/rust", "client/src-tauri", "tools/test-setup"]
+members = [
+  "server",
+  "shared",
+  "sdk/rust",
+  "client/src-tauri",
+  "tools/test-setup",
+  "tools/sdk-seed",
+]
 
 [workspace.package]
 edition = "2021"

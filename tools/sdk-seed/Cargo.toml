@@ -1,0 +1,21 @@
+[package]
+name = "sdk-seed"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Seed the decentcom test environment via the SDK (REST API)."
+
+[[bin]]
+name = "sdk-seed"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+decentcom-sdk = { path = "../../sdk/rust" }
+ed25519-dalek.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+shared.workspace = true
+tokio = { workspace = true }
+tracing.workspace = true
+tracing-subscriber.workspace = true
