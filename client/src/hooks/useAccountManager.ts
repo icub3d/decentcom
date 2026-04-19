@@ -114,17 +114,14 @@ export function useAccountManager() {
       currentServerId: string | null;
       status: string;
       connectLoading: boolean;
-      address: string;
     }) => {
       if (useAccountManagerStore.getState().isSwitching) return false;
-
-      const isDifferentServer = opts.currentServerId && opts.currentServerId !== opts.address;
 
       return (
         opts.hasIdentity &&
         !opts.loading &&
         !!opts.currentServerId &&
-        (opts.status === "disconnected" || isDifferentServer) &&
+        opts.status === "disconnected" &&
         !opts.connectLoading &&
         useAppStore.persist.hasHydrated()
       );

@@ -7,6 +7,7 @@ interface MessageViewProps {
   channel: Channel | null;
   messages: Message[];
   hasMore: boolean;
+  loading: boolean;
   connected: boolean;
   onLoadMore: () => Promise<void>;
   onSend: (content: string, attachmentIds?: string[]) => Promise<void>;
@@ -18,6 +19,7 @@ export function MessageView({
   channel,
   messages,
   hasMore,
+  loading,
   connected,
   onLoadMore,
   onSend,
@@ -54,7 +56,7 @@ export function MessageView({
           )}
         </header>
         <div className="flex-1 min-h-0">
-          <MessageList messages={messages} hasMore={hasMore} onLoadMore={onLoadMore} />
+          <MessageList messages={messages} hasMore={hasMore} loading={loading} onLoadMore={onLoadMore} />
         </div>
         <MessageInput disabled={!connected || !permissions.has(SEND_MESSAGES)} onSend={onSend} />
       </section>

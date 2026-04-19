@@ -6,7 +6,6 @@ import type { Attachment } from "../api/media";
 import type { ReactionSummary } from "../api/reactions";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
-import { getServerInfo } from "../api/server";
 import { ApiError, apiRequest } from "../services/api";
 import { authenticateServer } from "../services/auth";
 import { GatewayClient } from "../services/gateway";
@@ -86,7 +85,6 @@ export interface ServerStore {
   status: ConnectionStatus;
   sessionToken: string | null;
   sessionUserId: string | null;
-  membershipMode: string;
   channels: Channel[];
   roles: Role[];
   memberRoleIdsByUserId: Record<string, string[]>;
@@ -94,8 +92,10 @@ export interface ServerStore {
   currentChannelId: string | null;
   messages: Record<string, Message[]>;
   hasMore: Record<string, boolean>;
+  loadingMessages: Record<string, boolean>;
   replyingTo: Message | null;
   error: string | null;
+  authError: boolean;
   gateway: GatewayClient | null;
 
   connect: (address: string) => Promise<void>;
@@ -145,7 +145,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   status: "disconnected",
   sessionToken: null,
   sessionUserId: null,
-  membershipMode: "",
   channels: [],
   roles: [],
   memberRoleIdsByUserId: {},
@@ -153,27 +152,37 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   currentChannelId: null,
   messages: {},
   hasMore: {},
+  loadingMessages: {},
   replyingTo: null,
   error: null,
+  authError: false,
   gateway: null,
 
   connect: async (address: string) => {
     const normalized = normalizeAddress(address);
-    if (get().address && get().address !== normalized) {
-      get().disconnect();
+    const isNewServer = get().address !== normalized;
+
+    set({
+      status: "connecting",
+      error: null,
+      authError: false,
+      address: normalized,
+      serverId: normalized,
+      currentChannelId: null,
+    });
+
+    if (isNewServer) {
+      set({
+        channels: [],
+        messages: {},
+        hasMore: {},
+        loadingMessages: {},
+      });
     }
-    set({ status: "connecting", error: null, address: normalized, serverId: normalized });
 
     try {
-      const [session, serverInfo] = await Promise.all([
-        authenticateServer(normalized),
-        getServerInfo(normalized),
-      ]);
-      set({
-        sessionToken: session.token,
-        sessionUserId: session.userId,
-        membershipMode: serverInfo.membership_mode,
-      });
+      const session = await authenticateServer(normalized);
+      set({ sessionToken: session.token, sessionUserId: session.userId });
 
       let channelData;
       try {
@@ -182,10 +191,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 403 && error.message.includes("membership required")) {
-          // If we are not a member, try to join. This will only succeed if the server is in Open mode
-          // or if the user is otherwise allowed to join (e.g. they joined before).
           await joinServer(normalized, session.token);
-          // Retry channel fetch
           channelData = await apiRequest<ChannelsResponse>(normalized, "/api/v1/channels", {
             token: session.token,
           });
@@ -209,7 +215,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         channels: sortChannels(channelData.channels),
         roles: roleData,
         memberRoleIdsByUserId: roleMap,
-        currentChannelId: firstChannelId,
       });
 
       const gateway = get().gateway ?? new GatewayClient(get);
@@ -217,17 +222,27 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       gateway.reconnect();
 
       if (firstChannelId) {
+        set({ currentChannelId: firstChannelId });
         await get().loadMoreMessages(firstChannelId);
       }
 
       set({ status: "connected" });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        set({ status: "disconnected", error: error.message, sessionToken: null, sessionUserId: null });
-        throw error;
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      set({ status: "disconnected", error: message, sessionToken: null, sessionUserId: null });
+      const msg = error instanceof Error ? error.message : String(error);
+      const isAuthError =
+        (error instanceof ApiError && error.status === 403) ||
+        msg.toLowerCase().includes("keyring") ||
+        msg.toLowerCase().includes("keychain") ||
+        msg.toLowerCase().includes("secure storage") ||
+        msg.toLowerCase().includes("dbus");
+      
+      set({
+        status: "disconnected",
+        error: msg,
+        authError: isAuthError,
+        sessionToken: null,
+        sessionUserId: null,
+      });
       throw error;
     }
   },
@@ -246,6 +261,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       currentChannelId: null,
       messages: {},
       hasMore: {},
+      loadingMessages: {},
     });
   },
 
@@ -320,35 +336,56 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
   loadMoreMessages: async (channelId: string) => {
     const state = get();
-    if (!state.sessionToken) {
+    if (!state.sessionToken || state.loadingMessages[channelId]) {
       return;
     }
 
-    const existing = state.messages[channelId] ?? [];
-    const oldestId = existing.at(-1)?.id;
-    const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
-
-    const page = await apiRequest<MessagePage>(
-      state.address,
-      `/api/v1/channels/${channelId}/messages${query}`,
-      {
-        token: state.sessionToken,
+    set((prev) => ({
+      loadingMessages: {
+        ...prev.loadingMessages,
+        [channelId]: true,
       },
-    );
+    }));
 
-    set((prev) => {
-      const current = prev.messages[channelId] ?? [];
-      return {
-        messages: {
-          ...prev.messages,
-          [channelId]: mergeMessages(current, page.messages),
+    try {
+      const existing = state.messages[channelId] ?? [];
+      const oldestId = existing.at(-1)?.id;
+      const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
+
+      const page = await apiRequest<MessagePage>(
+        state.address,
+        `/api/v1/channels/${channelId}/messages${query}`,
+        {
+          token: state.sessionToken,
         },
-        hasMore: {
-          ...prev.hasMore,
-          [channelId]: page.has_more,
+      );
+
+      set((prev) => {
+        const current = prev.messages[channelId] ?? [];
+        return {
+          messages: {
+            ...prev.messages,
+            [channelId]: mergeMessages(current, page.messages),
+          },
+          hasMore: {
+            ...prev.hasMore,
+            [channelId]: page.has_more,
+          },
+          loadingMessages: {
+            ...prev.loadingMessages,
+            [channelId]: false,
+          },
+        };
+      });
+    } catch (error) {
+      set((prev) => ({
+        loadingMessages: {
+          ...prev.loadingMessages,
+          [channelId]: false,
         },
-      };
-    });
+      }));
+      throw error;
+    }
   },
 
   createChannel: async (req: CreateChannelRequest) => {
@@ -479,9 +516,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           };
         }
         case "MEMBER_JOIN": {
-          const member = event.d as { user_id: string; pubkey: string; roles?: string[]; joined_at: string };
+          const member = event.d as { user_id: string; pubkey: string; roles: string[]; joined_at: string };
           const existing = state.memberRoleIdsByUserId[member.user_id] ?? [];
-          const merged = Array.from(new Set([...existing, ...(member.roles ?? [])]));
+          const merged = Array.from(new Set([...existing, ...member.roles]));
           useMembersStore.getState().applyGatewayEvent(event);
           return {
             memberRoleIdsByUserId: {

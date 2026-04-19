@@ -8,6 +8,7 @@ clean: ## Remove test databases, media dirs, and OS keychain test entries
 	cargo run -q --bin test-setup -- clean
 
 setup: clean ## Clean + bootstrap test DBs with users/roles/channels + store keys in keychain
+	cd client && pnpm install
 	cargo run -q --bin test-setup
 
 clean-identity: ## Remove all decentcom keys from the OS keychain (useful during testing)

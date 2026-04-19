@@ -138,14 +138,16 @@ export async function initAppStoreForAccount(pubkey: string) {
   // Point persist at the new key, then rehydrate so the store picks it up.
   useAppStore.persist.setOptions({ name: newKey });
 
-  // Reset to defaults BEFORE rehydrate so that if the new key has no
-  // stored data, the store ends up with clean defaults instead of the
-  // previous account's stale in-memory state.
-  useAppStore.setState({
-    currentServerId: null,
-    servers: {},
-    theme: defaultTheme(),
-  });
+  // Reset to defaults BEFORE rehydrate ONLY if we are switching between accounts.
+  // This avoids clearing the store on the first run of a session if we are
+  // just namespacing the initial default state.
+  if (current !== null) {
+    useAppStore.setState({
+      currentServerId: null,
+      servers: {},
+      theme: defaultTheme(),
+    });
+  }
 
   await useAppStore.persist.rehydrate();
 }

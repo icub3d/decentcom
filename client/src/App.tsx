@@ -26,11 +26,12 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
-  const { connect, status, address } = useServerStore();
+  const { connect, status, authError } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const {
     isSwitching,
@@ -42,6 +43,11 @@ function App() {
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  // Reset retry count when server or account changes
+  useEffect(() => {
+    setRetryCount(0);
+  }, [currentServerId, publicKey]);
 
   // Once identity is resolved, make sure the app store is namespaced
   // to the active account so persist reads/writes go to the right key.
@@ -64,6 +70,7 @@ function App() {
   useEffect(() => {
     if (status === "connected") {
       setConnectError(null);
+      setRetryCount(0);
     }
   }, [status]);
 
@@ -74,8 +81,10 @@ function App() {
       const info = await getServerInfo(address);
       await connect(address);
       addServer(address, info.name);
+      setRetryCount(0);
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : String(err));
+      setRetryCount((prev) => prev + 1);
     } finally {
       setConnectLoading(false);
     }
@@ -83,19 +92,41 @@ function App() {
 
   // Auto-connect: gated by isSwitching to prevent races during account transitions.
   useEffect(() => {
-    if (
-      shouldAutoConnect({
-        hasIdentity: !!hasIdentity,
-        loading,
-        currentServerId,
-        status,
-        connectLoading,
-        address,
-      })
-    ) {
+    const should = shouldAutoConnect({
+      hasIdentity: !!hasIdentity,
+      loading,
+      currentServerId,
+      status,
+      connectLoading,
+    });
+
+    if (should && !connectError) {
       handleConnect(currentServerId!);
     }
-  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, address]);
+  }, [currentServerId, hasIdentity, loading, status, connectLoading, handleConnect, isSwitching, shouldAutoConnect, connectError]);
+
+  // Auto-retry with backoff
+  useEffect(() => {
+    if (
+      retryCount > 0 &&
+      status === "disconnected" &&
+      !connectLoading &&
+      currentServerId &&
+      !isSwitching &&
+      connectError &&
+      !authError // NEVER auto-retry if it's an authentication error (prevent keychain loops)
+    ) {
+      // More conservative backoff: 2s, 4s, 8s, 16s, max 60s
+      // We start at 2s to give the OS and server time to settle.
+      const delay = Math.min(Math.pow(2, retryCount) * 1000, 60000);
+
+      const timer = setTimeout(() => {
+        setConnectError(null); // Clear error to trigger auto-connect effect
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [retryCount, status, connectLoading, currentServerId, isSwitching, connectError, authError]);
+
 
   async function handleJoinByInvite(address: string, inviteCode: string) {
     setConnectLoading(true);
