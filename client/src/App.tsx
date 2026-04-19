@@ -26,7 +26,7 @@ function App() {
     refresh,
   } = useIdentity();
   const { currentServerId, servers, addServer, setCurrentServer, initTheme } = useAppStore();
-  const { connect, status, authError } = useServerStore();
+  const { connect, status, authError, address } = useServerStore();
   const joinInvite = useInvitesStore((state) => state.joinInvite);
   const { invite, clearInviteLink } = useInviteLink();
   const [connectLoading, setConnectLoading] = useState(false);
@@ -98,6 +98,7 @@ function App() {
       currentServerId,
       status,
       connectLoading,
+      address,
     });
 
     if (should && !connectError) {

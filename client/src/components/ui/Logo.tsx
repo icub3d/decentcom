@@ -7,6 +7,8 @@ export function Logo({ size = 32, className = "" }: { size?: number | string; cl
       className={`text-ctp-blue ${className}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="decentcom"
     >
       <rect width="100" height="100" rx="22" fill="currentColor" />
       <circle cx="50" cy="38" r="22" stroke="var(--ctp-crust)" strokeWidth="8" />
