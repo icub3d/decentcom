@@ -5,6 +5,7 @@ import { KeySafety } from "./KeySafety";
 import { keyImport, keyBackupReadPubkey } from "../services/identity";
 import { useAppStore, type AppBackupState } from "../stores/appStore";
 import { About } from "../components/about/About";
+import { Logo } from "../components/ui/Logo";
 
 function shortPubkey(pubkey: string): string {
   if (pubkey.length <= 12) return pubkey;
@@ -251,15 +252,20 @@ export function Setup({ onGenerate, onImport, onComplete, onCancel }: SetupProps
     <>
       {showAbout && <About onClose={() => setShowAbout(false)} />}
       <div className="max-w-md mx-auto p-8 space-y-8 bg-ctp-mantle rounded-xl shadow-xl border border-ctp-overlay0 text-ctp-text">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-ctp-text">
-            {onCancel ? "Add Account" : "Welcome"}
-          </h1>
-          <p className="text-ctp-subtext0">
-            {onCancel
-              ? "Create or import another identity."
-              : "Set up your decentcom identity to get started."}
-          </p>
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Logo size={64} />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-ctp-text">
+              {onCancel ? "Add Account" : "Welcome"}
+            </h1>
+            <p className="text-ctp-subtext0">
+              {onCancel
+                ? "Create or import another identity."
+                : "Set up your decentcom identity to get started."}
+            </p>
+          </div>
           {!onCancel && (
             <button
               onClick={() => setShowAbout(true)}
