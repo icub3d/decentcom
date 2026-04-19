@@ -236,7 +236,7 @@ mod tests {
             .await
             .unwrap();
 
-        s.associate_attachments(&[att.id.clone()], &msg1.id, &user.id)
+        s.associate_attachments(std::slice::from_ref(&att.id), &msg1.id, &user.id)
             .await
             .unwrap();
 

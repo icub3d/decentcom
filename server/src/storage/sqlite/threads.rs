@@ -226,7 +226,7 @@ mod tests {
         let thread = s.create_thread(&cid, &mid, &uid).await.unwrap();
         let m1 = s.create_message(&cid, &uid, "reply", Some(&thread.id)).await.unwrap();
 
-        let summaries = s.list_thread_summaries(&[mid.clone()]).await.unwrap();
+        let summaries = s.list_thread_summaries(std::slice::from_ref(&mid)).await.unwrap();
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].thread_id, thread.id);
         assert_eq!(summaries[0].reply_count, 1);
