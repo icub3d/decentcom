@@ -334,9 +334,10 @@ async fn seed_other_members(
         }
         let user = ctx.user(user_def.name);
         let client = authenticate(ctx.cfg.base_url, user).await?;
-        set_display_name(&client, user_def.display_name).await?;
 
-        // Decide how to join.
+        // Join must happen before any member-only call (e.g. profile update).
+        // On Open mode, auth already auto-joined the user; for InviteOnly /
+        // Allowlist we have to call join (with an invite code if needed).
         if let Some(code) = invite_codes.get(user_def.name) {
             client
                 .invites()
@@ -344,14 +345,7 @@ async fn seed_other_members(
                 .await
                 .with_context(|| format!("{} joining via invite", user_def.name))?;
         } else {
-            // Try POST /members/join. For Open this is a no-op (auto-joined),
-            // for Allowlist it succeeds because the entry was added above.
-            // We tolerate "already a member" / 409 by checking membership.
-            let me = client
-                .members()
-                .get(user.pubkey())
-                .await
-                .ok();
+            let me = client.members().get(user.pubkey()).await.ok();
             if me.is_none() {
                 client
                     .members()
@@ -360,6 +354,8 @@ async fn seed_other_members(
                     .with_context(|| format!("{} joining server", user_def.name))?;
             }
         }
+
+        set_display_name(&client, user_def.display_name).await?;
         ctx.clients.insert(user_def.name, client);
         report.members += 1;
     }
