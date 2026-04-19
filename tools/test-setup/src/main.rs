@@ -1,10 +1,8 @@
 mod backup;
 mod clean;
-mod db;
 mod dev_assets;
 mod keychain;
 mod localstorage;
-mod migrations;
 mod seed;
 
 use anyhow::Result;
@@ -15,8 +13,11 @@ use std::path::{Path, PathBuf};
 #[command(
     name = "test-setup",
     about = "Bootstrap the decentcom test environment",
-    long_about = "Cleans, migrates, and seeds the test databases, OS keychain, \
-                  and WebView localStorage for local development."
+    long_about = "Cleans test databases and WebView storage, injects test \
+                  identities into the OS keychain, and pre-populates the \
+                  Tauri WebView's localStorage with the test server list. \
+                  Server data (channels, messages, etc.) is seeded by \
+                  tools/sdk-seed against running servers."
 )]
 struct Cli {
     /// Repository root. Defaults to walking up from CWD for a directory
@@ -32,6 +33,11 @@ struct Cli {
 enum Command {
     /// Clean test state only: databases, WebView data, and keychain entries.
     Clean,
+
+    /// Pre-stage the local environment for `sdk-seed`: clean DBs, install
+    /// keychain entries, and seed the WebView's localStorage. Does NOT seed
+    /// any server data (use `sdk-seed` for that, after the servers boot).
+    Prepare,
 
     /// Generate developer assets: BIP39 mnemonic files and encrypted .dckb
     /// backup files for testing the backup/restore UI flow.
@@ -59,7 +65,6 @@ fn repo_root(cli_root: Option<PathBuf>) -> PathBuf {
             return PathBuf::from(r);
         }
     }
-    // Walk up from CWD looking for the repo root marker.
     let mut dir = std::env::current_dir().unwrap_or_default();
     for _ in 0..10 {
         if dir.join("Makefile").exists() && dir.join("Cargo.toml").exists() {
@@ -78,7 +83,7 @@ fn main() -> Result<()> {
     let root = repo_root(cli.root);
 
     match cli.command {
-        None => full_setup(&root),
+        None | Some(Command::Prepare) => prepare(&root),
         Some(Command::Clean) => run_clean(&root),
         Some(Command::GenDevAssets { out_dir, passphrase }) => {
             let out_dir = if out_dir.is_absolute() {
@@ -101,21 +106,13 @@ fn run_clean(root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn full_setup(root: &Path) -> Result<()> {
+fn prepare(root: &Path) -> Result<()> {
     let users = seed::all_users();
 
     println!("Cleaning test environment...");
     clean::clean_databases(root)?;
     clean::clean_webview_data()?;
     keychain::clean(&users)?;
-
-    println!("\nRunning server migrations...");
-    for name in ["open", "private", "strict"] {
-        migrations::run_migrations(root, name)?;
-    }
-
-    println!("\nSeeding databases...");
-    db::seed_all(root, &users)?;
 
     println!("\nStoring test accounts in keychain...");
     keychain::store(&users)?;
@@ -124,5 +121,7 @@ fn full_setup(root: &Path) -> Result<()> {
     localstorage::seed(&users)?;
 
     seed::print_summary(&users);
+    println!("\nNext: start the servers and run `cargo run -q --bin sdk-seed` to seed");
+    println!("      channels, messages, and other content via the REST API.");
     Ok(())
 }
