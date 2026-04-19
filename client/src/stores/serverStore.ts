@@ -168,6 +168,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       authError: false,
       address: normalized,
       serverId: normalized,
+      currentChannelId: null,
     });
 
     if (isNewServer) {
@@ -176,7 +177,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         messages: {},
         hasMore: {},
         loadingMessages: {},
-        currentChannelId: null,
       });
     }
 
@@ -218,7 +218,6 @@ export const useServerStore = create<ServerStore>((set, get) => ({
         channels: sortChannels(channelData.channels),
         roles: roleData,
         memberRoleIdsByUserId: roleMap,
-        currentChannelId: firstChannelId,
       });
 
       const gateway = get().gateway ?? new GatewayClient(get);
@@ -226,6 +225,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       gateway.reconnect();
 
       if (firstChannelId) {
+        set({ currentChannelId: firstChannelId });
         await get().loadMoreMessages(firstChannelId);
       }
 
@@ -233,10 +233,17 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       // will do it when the socket opens. If we set it here, we might overwrite
       // a "reconnecting" status from the gateway if it's already struggling.
     } catch (error) {
-      const isAuthError = error instanceof ApiError && error.status === 403;
+      const msg = error instanceof Error ? error.message : String(error);
+      const isAuthError =
+        (error instanceof ApiError && error.status === 403) ||
+        msg.toLowerCase().includes("keyring") ||
+        msg.toLowerCase().includes("keychain") ||
+        msg.toLowerCase().includes("secure storage") ||
+        msg.toLowerCase().includes("dbus");
+
       set({
         status: "disconnected",
-        error: error instanceof Error ? error.message : String(error),
+        error: msg,
         authError: isAuthError,
         sessionToken: null,
         sessionUserId: null,
