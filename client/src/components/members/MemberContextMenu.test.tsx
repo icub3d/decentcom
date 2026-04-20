@@ -26,6 +26,7 @@ const baseMember: Member = {
   pubkey: "pk1",
   display_name: "Alice",
   avatar_hash: null,
+  is_bot: false,
   joined_at: "2025-01-01T00:00:00Z",
   roles: [],
 };

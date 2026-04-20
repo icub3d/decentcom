@@ -39,6 +39,8 @@ function makeMsg(id: string, channelId = "ch1"): Message {
     edited_at: null,
     deleted: false,
     attachments: [],
+    reactions: [],
+    thread: null,
   };
 }
 
@@ -55,7 +57,7 @@ describe("serverStore — message ordering & deduplication", () => {
       channels: [],
       currentChannelId: null,
       roles: [],
-    } as Parameters<typeof useServerStore.setState>[0]);
+    });
   });
 
   it("stale-write race: WS message arriving during in-flight fetch survives in correct position", async () => {
