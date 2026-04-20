@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                d.id as \"id!\",\n                d.sender_pubkey as \"sender_pubkey!\",\n                d.group_id as \"group_id!\",\n                d.encrypted_blob as \"encrypted_blob!\",\n                d.ttl_days as \"ttl_days: u32\",\n                d.created_at as \"created_at!\"\n            FROM pending_dms d\n            JOIN pending_dm_targets t ON d.id = t.dm_id\n            WHERE t.device_id = ?\n              AND NOT EXISTS (\n                  SELECT 1 FROM dm_acks a\n                  WHERE a.dm_id = d.id AND a.device_id = ?\n              )\n            ORDER BY d.created_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "sender_pubkey!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "group_id!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "encrypted_blob!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "ttl_days: u32",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3ee6c3b74c3fd92cc22e19e82d64095333961303af3c188d0af1932e2273a808"
+}

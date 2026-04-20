@@ -28,6 +28,7 @@ pub enum Op {
     ThreadCreate,
     ThreadMessageCreate,
     ThreadUpdate,
+    DmNotify,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +88,11 @@ pub struct ThreadUpdateData {
     pub thread_id: String,
     pub reply_count: i64,
     pub last_reply_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DmNotifyData {
+    pub pending_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

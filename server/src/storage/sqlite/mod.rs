@@ -1,6 +1,8 @@
 mod attachments;
 mod bots;
 mod channels;
+mod device_keys;
+mod dms;
 mod invites;
 mod media;
 mod membership;

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT OR IGNORE INTO dm_acks (dm_id, device_id)\n            VALUES (?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7acfa3480df566fc4f5733c2405160b9ec50cd811ed9e520198f20987a8d39e2"
+}

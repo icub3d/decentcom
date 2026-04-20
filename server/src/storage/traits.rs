@@ -317,6 +317,22 @@ pub struct CreateAttachmentParams<'a> {
     pub height: Option<i32>,
 }
 
+use shared::dms::{DeviceKey, PendingDM};
+
+#[async_trait]
+pub trait DeviceKeyStore: Send + Sync {
+    async fn add_device_key(&self, user_id: &str, device_key: DeviceKey) -> Result<(), StorageError>;
+    async fn get_device_keys(&self, user_id: &str) -> Result<Vec<DeviceKey>, StorageError>;
+}
+
+#[async_trait]
+pub trait DmStore: Send + Sync {
+    async fn store_dm(&self, dm: PendingDM, target_device_ids: &[String]) -> Result<(), StorageError>;
+    async fn fetch_pending_dms(&self, device_id: &str) -> Result<Vec<PendingDM>, StorageError>;
+    async fn ack_dm(&self, dm_id: &str, device_id: &str) -> Result<(), StorageError>;
+    async fn prune_dms(&self) -> Result<u64, StorageError>;
+}
+
 pub trait Storage:
     UserStore
     + ChannelStore
@@ -330,6 +346,8 @@ pub trait Storage:
     + ReactionStore
     + ThreadStore
     + BotStore
+    + DeviceKeyStore
+    + DmStore
 {
 }
 
@@ -346,5 +364,7 @@ impl<T> Storage for T where
         + ReactionStore
         + ThreadStore
         + BotStore
+        + DeviceKeyStore
+        + DmStore
 {
 }

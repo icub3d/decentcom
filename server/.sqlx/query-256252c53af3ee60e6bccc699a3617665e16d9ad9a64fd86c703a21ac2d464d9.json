@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO pending_dms (id, sender_pubkey, group_id, encrypted_blob, ttl_days, created_at)\n            VALUES (?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "256252c53af3ee60e6bccc699a3617665e16d9ad9a64fd86c703a21ac2d464d9"
+}

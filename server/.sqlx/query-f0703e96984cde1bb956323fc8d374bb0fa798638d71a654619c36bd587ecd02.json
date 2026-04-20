@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM pending_dms\n            WHERE id IN (\n                SELECT id FROM pending_dms d\n                WHERE (\n                    -- All targeted devices have ACKed\n                    (SELECT count(*) FROM pending_dm_targets t WHERE t.dm_id = d.id) =\n                    (SELECT count(*) FROM dm_acks a WHERE a.dm_id = d.id)\n                ) OR (\n                    -- OR TTL has expired\n                    unixepoch(d.created_at) + (d.ttl_days * 86400) < unixepoch('now')\n                )\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "f0703e96984cde1bb956323fc8d374bb0fa798638d71a654619c36bd587ecd02"
+}
