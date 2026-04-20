@@ -2,6 +2,7 @@ mod attachments;
 mod auth;
 mod channels;
 mod config;
+mod dms;
 mod gateway;
 mod invites;
 mod membership;
@@ -49,6 +50,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .nest("/api/v1", channels::router())
+        .nest("/api/v1", dms::router())
         .nest("/api/v1", messages::router())
         .nest("/api/v1", invites::router())
         .nest("/api/v1", membership::router())
@@ -156,6 +158,21 @@ fn spawn_invite_cleanup(storage: DynStorage) {
     });
 }
 
+fn spawn_dm_pruning_worker(storage: DynStorage) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60 * 60));
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            match storage.prune_dms().await {
+                Ok(n) if n > 0 => info!(removed = n, "pruned pending DMs"),
+                Ok(_) => {}
+                Err(e) => warn!(error = %e, "DM pruning failed"),
+            }
+        }
+    });
+}
+
 /// Seed initial data if the server is freshly initialized (no channels exist).
 async fn seed_channels(storage: &DynStorage) -> Result<(), Box<dyn std::error::Error>> {
     let channels = storage.list_channels().await?;
@@ -185,6 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     spawn_session_cleanup(storage.clone());
     spawn_challenge_cleanup(challenge_store.clone());
     spawn_invite_cleanup(storage.clone());
+    spawn_dm_pruning_worker(storage.clone());
 
     let bind = config.network.bind_address;
     let state = AppState {
