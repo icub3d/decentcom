@@ -148,7 +148,7 @@ describe("useAccountManager", () => {
         }
       });
 
-      expect(caughtError?.message).toMatch(/Backend active account mismatch/);
+      expect((caughtError as Error | null)?.message).toMatch(/Backend active account mismatch/);
 
       // isSwitching should still be cleared on error
       expect(useAccountManagerStore.getState().isSwitching).toBe(false);

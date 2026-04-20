@@ -1,4 +1,6 @@
 import { apiRequest } from "../services/api";
+import type { Attachment } from "./media";
+import type { ReactionSummary } from "./reactions";
 
 export interface Channel {
   id: string;
@@ -6,6 +8,31 @@ export interface Channel {
   category: string | null;
   position: number;
   type: string;
+}
+
+export interface ThreadSummary {
+  thread_id: string;
+  reply_count: number;
+  last_reply_at: string | null;
+  last_reply_author_id: string | null;
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  edited_at: string | null;
+  deleted: boolean;
+  attachments: Attachment[];
+  reactions: ReactionSummary[];
+  thread: ThreadSummary | null;
+}
+
+export interface MessagePage {
+  messages: Message[];
+  has_more: boolean;
 }
 
 export interface CreateChannelRequest {

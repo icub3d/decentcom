@@ -1,5 +1,6 @@
 import { apiRequest } from "../services/api";
 import type { Message, MessagePage } from "./channels";
+export type { Message, MessagePage };
 
 export interface CreateThreadResponse {
   thread_id: string;

@@ -10,7 +10,7 @@ import { StatusIndicator } from "../connection/StatusIndicator";
 interface ChannelSidebarProps {
   channels: Channel[];
   currentChannelId: string | null;
-  status: "connecting" | "connected" | "disconnected";
+  status: "connecting" | "connected" | "disconnected" | "reconnecting";
   onSelectChannel: (id: string) => void;
 }
 

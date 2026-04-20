@@ -1,9 +1,7 @@
 import { create } from "zustand";
 
-import type { CreateChannelRequest, UpdateChannelRequest } from "../api/channels";
+import type { Channel, CreateChannelRequest, Message, MessagePage, UpdateChannelRequest } from "../api/channels";
 import * as channelsApi from "../api/channels";
-import type { Attachment } from "../api/media";
-import type { ReactionSummary } from "../api/reactions";
 import type { ChannelPermissionOverride, Role } from "../api/roles";
 import { listRoles } from "../api/roles";
 import { ApiError, apiRequest } from "../services/api";
@@ -13,41 +11,10 @@ import { useMembersStore } from "./members";
 import { joinServer } from "../api/members";
 import { useThreadStore } from "./threadStore";
 
-export interface Channel {
-  id: string;
-  name: string;
-  category: string | null;
-  position: number;
-  type: string;
-}
-
-export interface ThreadSummary {
-  thread_id: string;
-  reply_count: number;
-  last_reply_at: string | null;
-  last_reply_author_id: string | null;
-}
-
-export interface Message {
-  id: string;
-  channel_id: string;
-  author_id: string;
-  content: string;
-  created_at: string;
-  edited_at: string | null;
-  deleted: boolean;
-  attachments: Attachment[];
-  reactions: ReactionSummary[];
-  thread: ThreadSummary | null;
-}
+export type { Channel, Message } from "../api/channels";
 
 interface ChannelsResponse {
   channels: Channel[];
-}
-
-interface MessagePage {
-  messages: Message[];
-  has_more: boolean;
 }
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "reconnecting";
@@ -83,6 +50,7 @@ export interface ServerStore {
   serverId: string;
   address: string;
   status: ConnectionStatus;
+  membershipMode: string;
   sessionToken: string | null;
   sessionUserId: string | null;
   channels: Channel[];
@@ -143,6 +111,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   serverId: "",
   address: "",
   status: "disconnected",
+  membershipMode: "",
   sessionToken: null,
   sessionUserId: null,
   channels: [],
@@ -349,7 +318,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
 
     try {
       const existing = state.messages[channelId] ?? [];
-      const oldestId = existing.at(-1)?.id;
+      const oldestId = existing[existing.length - 1]?.id;
       const query = oldestId ? `?before=${encodeURIComponent(oldestId)}&limit=50` : "?limit=50";
 
       const page = await apiRequest<MessagePage>(
@@ -587,9 +556,9 @@ export const useServerStore = create<ServerStore>((set, get) => ({
           };
         }
         case "THREAD_CREATE": {
-          const { channel_id, parent_message_id, thread_id } = event.d as {
+          const { channel_id, message_id: parent_message_id, thread_id } = event.d as {
             channel_id: string;
-            parent_message_id: string;
+            message_id: string;
             thread_id: string;
           };
           const existing = state.messages[channel_id] ?? [];

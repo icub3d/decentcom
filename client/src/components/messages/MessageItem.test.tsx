@@ -16,6 +16,8 @@ describe("MessageItem", () => {
           edited_at: new Date().toISOString(),
           deleted: false,
           attachments: [],
+          reactions: [],
+          thread: null,
         }}
       />,
     );
@@ -37,6 +39,8 @@ describe("MessageItem", () => {
           edited_at: null,
           deleted: true,
           attachments: [],
+          reactions: [],
+          thread: null,
         }}
       />,
     );
