@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO pending_dm_targets (dm_id, device_id)\n                VALUES (?, ?)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a46b0ad4d9c697a3c0871c18735a896c793bcd8eaa29b7058dcfd6e34d832580"
+}
