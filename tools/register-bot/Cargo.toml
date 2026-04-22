@@ -1,0 +1,15 @@
+[package]
+name = "register-bot"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Register a bot with a decentcom server (leaves it pending approval)."
+
+[[bin]]
+name = "register-bot"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+decentcom-sdk = { path = "../../sdk/rust" }
+tokio = { workspace = true }

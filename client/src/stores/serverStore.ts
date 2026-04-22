@@ -66,7 +66,7 @@ export interface ServerStore {
   authError: boolean;
   gateway: GatewayClient | null;
 
-  connect: (address: string) => Promise<void>;
+  connect: (address: string, membershipMode?: string) => Promise<void>;
   disconnect: () => void;
   revalidate: () => Promise<void>;
   setCurrentChannel: (id: string) => Promise<void>;
@@ -127,7 +127,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
   authError: false,
   gateway: null,
 
-  connect: async (address: string) => {
+  connect: async (address: string, membershipMode?: string) => {
     const normalized = normalizeAddress(address);
     const isNewServer = get().address !== normalized;
 
@@ -138,6 +138,7 @@ export const useServerStore = create<ServerStore>((set, get) => ({
       address: normalized,
       serverId: normalized,
       currentChannelId: null,
+      membershipMode: membershipMode ?? "",
     });
 
     if (isNewServer) {
