@@ -79,7 +79,7 @@ function App() {
     setConnectError(null);
     try {
       const info = await getServerInfo(address);
-      await connect(address);
+      await connect(address, info.membership_mode);
       addServer(address, info.name);
       setRetryCount(0);
     } catch (err) {
@@ -136,7 +136,7 @@ function App() {
       const info = await getServerInfo(address);
       const session = await authenticateServer(address);
       await joinInvite(address, session.token, inviteCode);
-      await connect(address);
+      await connect(address, info.membership_mode);
       addServer(address, info.name);
       clearInviteLink();
     } catch (err) {
