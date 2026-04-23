@@ -9,5 +9,3 @@ venv-vllm-310/
 .github/
 docs/
 site/
-sdk/
-tools/
