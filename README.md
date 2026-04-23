@@ -87,6 +87,57 @@ make dev     # start the 3 servers, run the seeder, then start the client
 - **Restart one node**: `overmind restart open`
 - **Stop everything**: Press `Ctrl+C` in the overmind session.
 
+## Running the server with Docker
+
+Pre-built multi-arch images (`linux/amd64`, `linux/arm64`) are published to GHCR on every push to `main` and on version tags.
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/icub3d/decentcom-server:latest
+
+# Run with a bind-mounted config and a named volume for persistent data
+docker run -d \
+  --name decentcom \
+  -p 8080:8080 \
+  -v /path/to/decentcom.toml:/config/decentcom.toml:ro \
+  -v decentcom-data:/data \
+  ghcr.io/icub3d/decentcom-server:latest
+```
+
+The container expects:
+
+| Path | Purpose |
+|---|---|
+| `/config/decentcom.toml` | Server configuration (bind-mount, read-only) |
+| `/data/decentcom.db` | SQLite database (via the `/data` volume) |
+| `/data/media` | Uploaded media files (via the `/data` volume) |
+
+A minimal `decentcom.toml` for Docker:
+
+```toml
+[server]
+name = "My Community"
+
+[network]
+bind_address = "0.0.0.0:8080"
+
+[storage]
+backend = "sqlite"
+database_path = "/data/decentcom.db"
+media_path = "/data/media"
+```
+
+### Building locally
+
+```bash
+docker build -t decentcom-server .
+docker run -d \
+  -p 8080:8080 \
+  -v $(pwd)/test-configs/open.toml:/config/decentcom.toml:ro \
+  -v /tmp/decentcom-data:/data \
+  decentcom-server
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
