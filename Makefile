@@ -1,4 +1,4 @@
-.PHONY: help clean setup dev servers client clean-identity seed build test lint
+.PHONY: help clean setup dev servers client clean-identity seed test-welcome build test lint
 
 # `seed` is a one-shot process — let overmind treat its clean exit as success
 # instead of tearing the whole session down.
@@ -31,6 +31,9 @@ servers: ## Start only the 3 test servers (no client, no seed)
 
 seed: ## Run the SDK-based seeder against already-running servers
 	cargo run -q --bin sdk-seed
+
+test-welcome: ## Join the Open Server as a fresh user to trigger the welcomebot
+	cargo run -q --bin join-user http://localhost:8081 "Test User"
 
 client: ## Start only the Tauri client dev server
 	cd client && pnpm tauri dev

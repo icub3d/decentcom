@@ -1,0 +1,15 @@
+[package]
+name = "join-user"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Create a fresh user identity and join a decentcom server — for local testing."
+
+[[bin]]
+name = "join-user"
+path = "src/main.rs"
+
+[dependencies]
+decentcom-sdk = { workspace = true }
+anyhow = "1"
+tokio = { workspace = true }
