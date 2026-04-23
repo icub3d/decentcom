@@ -5,6 +5,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub server_url: String,
+    #[serde(default)]
     pub mnemonic: String,
     #[serde(default)]
     pub display_name: Option<String>,
