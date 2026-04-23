@@ -7,16 +7,24 @@ use crate::error::{Error, Result};
 /// Bot configuration loaded from a TOML file and/or environment variables.
 ///
 /// Environment variables take precedence over TOML file values.
-/// Required fields: `server_url`, `mnemonic`.
+/// Required: `server_url`, and either `mnemonic` or `seed_hex`.
 ///
-/// Env var names: `BOT_SERVER_URL`, `BOT_MNEMONIC`, `BOT_DISPLAY_NAME`.
-#[derive(Debug, Clone, Deserialize)]
+/// Env var names: `BOT_SERVER_URL`, `BOT_MNEMONIC`, `BOT_SEED_HEX`, `BOT_DISPLAY_NAME`.
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
     /// Base URL of the decentcom server (e.g. `https://decentcom.example.com`).
     pub server_url: String,
 
     /// BIP39 mnemonic phrase for the bot's Ed25519 identity.
+    /// Mutually exclusive with `seed_hex`.
+    #[serde(default)]
     pub mnemonic: String,
+
+    /// Raw 32-byte Ed25519 seed encoded as 64 hex characters.
+    /// Takes precedence over `mnemonic` when both are set.
+    /// Use this to reuse test identities derived directly from seed bytes.
+    #[serde(default)]
+    pub seed_hex: Option<String>,
 
     /// Optional display name shown for the bot in the member list.
     #[serde(default)]
@@ -24,15 +32,19 @@ pub struct Config {
 }
 
 impl Config {
-    /// Load from environment variables only (`BOT_SERVER_URL`, `BOT_MNEMONIC`).
+    /// Load from environment variables only (`BOT_SERVER_URL`, `BOT_MNEMONIC` or `BOT_SEED_HEX`).
     pub fn from_env() -> Result<Self> {
         let server_url = std::env::var("BOT_SERVER_URL")
             .map_err(|_| Error::Config("BOT_SERVER_URL not set".into()))?;
-        let mnemonic = std::env::var("BOT_MNEMONIC")
-            .map_err(|_| Error::Config("BOT_MNEMONIC not set".into()))?;
+        let mnemonic = std::env::var("BOT_MNEMONIC").unwrap_or_default();
+        let seed_hex = std::env::var("BOT_SEED_HEX").ok();
         let display_name = std::env::var("BOT_DISPLAY_NAME").ok();
 
-        Ok(Self { server_url, mnemonic, display_name })
+        if mnemonic.is_empty() && seed_hex.is_none() {
+            return Err(Error::Config("BOT_MNEMONIC or BOT_SEED_HEX must be set".into()));
+        }
+
+        Ok(Self { server_url, mnemonic, seed_hex, display_name })
     }
 
     /// Load from a TOML file, then override with any env vars that are present.
@@ -42,12 +54,14 @@ impl Config {
         let mut cfg: Config = toml::from_str(&content)
             .map_err(|e| Error::Config(format!("invalid TOML: {e}")))?;
 
-        // env vars override
         if let Ok(v) = std::env::var("BOT_SERVER_URL") {
             cfg.server_url = v;
         }
         if let Ok(v) = std::env::var("BOT_MNEMONIC") {
             cfg.mnemonic = v;
+        }
+        if let Ok(v) = std::env::var("BOT_SEED_HEX") {
+            cfg.seed_hex = Some(v);
         }
         if let Ok(v) = std::env::var("BOT_DISPLAY_NAME") {
             cfg.display_name = Some(v);

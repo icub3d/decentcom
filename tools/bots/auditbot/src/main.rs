@@ -22,6 +22,7 @@ async fn main() -> anyhow::Result<()> {
     let bot_cfg = BotConfig {
         server_url: cfg.server_url.clone(),
         mnemonic: cfg.mnemonic.clone(),
+        seed_hex: None,
         display_name: cfg.display_name.clone(),
     };
 

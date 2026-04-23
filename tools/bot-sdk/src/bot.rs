@@ -241,8 +241,17 @@ impl Bot {
     /// on the first attempt).
     pub async fn run(self) -> Result<()> {
         let config = self.config;
-        let identity = Identity::from_phrase(&config.mnemonic)
-            .map_err(|e| Error::Config(format!("invalid mnemonic: {e}")))?;
+        let identity = if let Some(hex) = &config.seed_hex {
+            let bytes = hex::decode(hex)
+                .map_err(|e| Error::Config(format!("invalid seed_hex: {e}")))?;
+            let arr: [u8; 32] = bytes
+                .try_into()
+                .map_err(|_| Error::Config("seed_hex must be exactly 64 hex chars (32 bytes)".into()))?;
+            Identity::from_seed(&arr)
+        } else {
+            Identity::from_phrase(&config.mnemonic)
+                .map_err(|e| Error::Config(format!("invalid mnemonic: {e}")))?
+        };
 
         let handlers = Arc::new(Handlers {
             on_message: self.on_message,

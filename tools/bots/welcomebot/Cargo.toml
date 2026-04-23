@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 decentcom-bot = { workspace = true }
+decentcom-sdk = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
