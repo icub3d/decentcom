@@ -1,0 +1,19 @@
+[package]
+name = "decentcom-welcomebot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Reference welcomebot for decentcom — greets new members and posts server rules."
+
+[[bin]]
+name = "welcomebot"
+path = "src/main.rs"
+
+[dependencies]
+decentcom-bot = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = "1"
+toml = "0.8"

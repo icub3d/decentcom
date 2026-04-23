@@ -9,6 +9,9 @@ members = [
   "tools/sdk-seed",
   "tools/register-bot",
   "tools/bot-sdk",
+  "tools/bots/welcomebot",
+  "tools/bots/modbot",
+  "tools/bots/auditbot",
 ]
 
 [workspace.package]
@@ -23,6 +26,7 @@ tokio = { version = "1", features = ["full"] }
 axum = { version = "0.7", features = ["ws"] }
 shared = { path = "shared" }
 decentcom-sdk = { path = "sdk/rust" }
+decentcom-bot = { path = "tools/bot-sdk" }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 bs58 = "0.5"
 base64 = "0.22"
