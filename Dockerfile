@@ -26,7 +26,7 @@ COPY shared/src shared/src
 COPY server/src server/src
 COPY server/migrations server/migrations
 
-RUN touch server/src/main.rs && \
+RUN find shared/src server/src -name "*.rs" -exec touch {} + && \
     cargo build --release -p server
 
 # ── Runtime image ────────────────────────────────────────────────────────────
