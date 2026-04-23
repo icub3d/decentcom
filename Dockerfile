@@ -32,7 +32,7 @@ RUN find shared/src server/src -name "*.rs" -exec touch {} + && \
 # ── Runtime image ────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tini && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /build/target/release/server /usr/local/bin/server
@@ -45,4 +45,4 @@ ENV DECENTCOM_MEDIA=/data/media
 
 EXPOSE 8080
 
-ENTRYPOINT ["server", "--config", "/config/decentcom.toml"]
+ENTRYPOINT ["tini", "--", "server", "--config", "/config/decentcom.toml"]

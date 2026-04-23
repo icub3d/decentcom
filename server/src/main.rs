@@ -156,6 +156,32 @@ fn spawn_invite_cleanup(storage: DynStorage) {
     });
 }
 
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("shutdown signal received, shutting down gracefully");
+}
+
 /// Seed initial data if the server is freshly initialized (no channels exist).
 async fn seed_channels(storage: &DynStorage) -> Result<(), Box<dyn std::error::Error>> {
     let channels = storage.list_channels().await?;
@@ -195,7 +221,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let listener = tokio::net::TcpListener::bind(bind).await?;
     info!(%bind, "listening");
-    axum::serve(listener, app(state)).await?;
+    axum::serve(listener, app(state))
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    info!("server shut down cleanly");
     Ok(())
 }
 
