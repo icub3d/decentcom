@@ -10,11 +10,12 @@ COPY sdk/rust/Cargo.toml sdk/rust/Cargo.toml
 COPY tools/test-setup/Cargo.toml tools/test-setup/Cargo.toml
 COPY tools/sdk-seed/Cargo.toml tools/sdk-seed/Cargo.toml
 COPY tools/register-bot/Cargo.toml tools/register-bot/Cargo.toml
+COPY tools/bot-sdk/Cargo.toml tools/bot-sdk/Cargo.toml
 
 # Stub out lib/main so Cargo can build deps without the real sources.
-RUN mkdir -p shared/src server/src sdk/rust/src tools/test-setup/src tools/sdk-seed/src tools/register-bot/src && \
+RUN mkdir -p shared/src server/src sdk/rust/src tools/test-setup/src tools/sdk-seed/src tools/register-bot/src tools/bot-sdk/src && \
     echo "fn main() {}" > server/src/main.rs && \
-    touch shared/src/lib.rs sdk/rust/src/lib.rs tools/test-setup/src/main.rs tools/sdk-seed/src/main.rs tools/register-bot/src/main.rs
+    touch shared/src/lib.rs sdk/rust/src/lib.rs tools/test-setup/src/main.rs tools/sdk-seed/src/main.rs tools/register-bot/src/main.rs tools/bot-sdk/src/lib.rs
 
 # Exclude the Tauri client crate — it needs platform GUI libs not present here.
 RUN sed -i '/"client\/src-tauri"/d' Cargo.toml
