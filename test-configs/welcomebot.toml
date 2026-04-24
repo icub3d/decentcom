@@ -1,0 +1,9 @@
+server_url    = "http://localhost:8081"
+# bot-alpha identity: derived from the test seed [0x10; 32] used by sdk-seed.
+# This bot is auto-approved on the Open Server when sdk-seed runs.
+seed_hex      = "1010101010101010101010101010101010101010101010101010101010101010"
+display_name  = "WelcomeBot"
+
+welcome_channel  = "general"
+welcome_template = "👋 Welcome, **{display_name}**! Glad to have you on the Open Server."
+rules_message    = "Check out #announcements for server rules."

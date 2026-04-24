@@ -1,0 +1,20 @@
+[package]
+name = "decentcom-modbot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Reference moderation bot for decentcom — detects spam patterns and takes configured action."
+
+[[bin]]
+name = "modbot"
+path = "src/main.rs"
+
+[dependencies]
+decentcom-bot = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+anyhow = "1"
+toml = "0.8"

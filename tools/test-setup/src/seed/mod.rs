@@ -63,6 +63,7 @@ pub fn print_summary(users: &[User]) {
         println!("  {:<12}  pubkey: {}…", bot.name, &bot.pubkey[..20]);
     }
     println!("  bot-alpha — approved on Open Server (localhost:8081) by sdk-seed");
+    println!("              runs as welcomebot (Procfile) using test-configs/welcomebot.toml");
     println!("  bot-beta  — not registered with any server");
     println!();
     println!("Server Layout (seeded by tools/sdk-seed via the REST API):");

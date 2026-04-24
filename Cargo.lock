@@ -1165,6 +1165,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "092966b41edc516079bdf31ec78a2e0588d1d0c08f78b91d8307215928642b2b"
 
 [[package]]
+name = "decentcom-auditbot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "decentcom-bot",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "decentcom-bot"
 version = "0.1.0"
 dependencies = [
@@ -1172,10 +1188,25 @@ dependencies = [
  "chrono",
  "decentcom-sdk",
  "futures-util",
+ "hex",
  "serde",
  "serde_json",
  "shared",
  "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "decentcom-modbot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "decentcom-bot",
+ "serde",
  "tokio",
  "toml 0.8.2",
  "tracing",
@@ -1202,6 +1233,20 @@ dependencies = [
  "tokio-tungstenite",
  "url",
  "wiremock",
+]
+
+[[package]]
+name = "decentcom-welcomebot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "decentcom-bot",
+ "decentcom-sdk",
+ "serde",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2701,6 +2746,15 @@ checksum = "38c0b942f458fe50cdac086d2f946512305e5631e720728f2a61aabcd47a6264"
 dependencies = [
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "join-user"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "decentcom-sdk",
+ "tokio",
 ]
 
 [[package]]
