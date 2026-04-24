@@ -31,7 +31,7 @@ decentcom-bot = { path = "tools/bot-sdk" }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 bs58 = "0.5"
 base64 = "0.22"
-rand = "0.9"
+rand = "0.10"
 hex = "0.4"
 sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio", "chrono", "migrate"] }
 chrono = { version = "0.4", features = ["serde"] }
