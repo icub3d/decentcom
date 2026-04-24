@@ -12,7 +12,7 @@ members = [
   "tools/bots/welcomebot",
   "tools/bots/modbot",
   "tools/bots/auditbot",
-  "tools/join-user",
+  "tools/join-user", "tools/bots/chatbot",
 ]
 
 [workspace.package]

@@ -1,0 +1,12 @@
+# decentcom server connection
+server_url = "ws://127.0.0.1:3000/api/v1/gateway"
+mnemonic = "bottom drive observe..." # Replace with the bot's mnemonic
+display_name = "chatbot"
+
+# Provider configuration
+[provider]
+type = "ollama"
+url = "http://127.0.0.1:11434"
+model = "llama3"
+system_prompt = "You are a helpful and concise assistant. Respond in markdown."
+temperature = 0.7
