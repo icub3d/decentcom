@@ -1,0 +1,22 @@
+[package]
+name = "decentcom-chatbot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Reference chatbot for decentcom — uses LLMs (like Ollama) to respond to mentions."
+
+[[bin]]
+name = "chatbot"
+path = "src/main.rs"
+
+[dependencies]
+decentcom-bot = { workspace = true }
+decentcom-sdk = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = "1"
+toml = "0.8"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde_json = "1"
